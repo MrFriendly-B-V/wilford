@@ -4,10 +4,8 @@ use actix_web::web::ServiceConfig;
 
 mod appdata;
 mod auth;
-mod empty;
 mod error;
 mod oauth;
-mod redirect;
 mod v1;
 
 pub struct Router;

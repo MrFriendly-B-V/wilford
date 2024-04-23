@@ -8,7 +8,7 @@ use database::oauth2_client::OAuth2Client;
 use espocrm_rs::EspoApiClient;
 use noiseless_tracing_actix_web::NoiselessRootSpanBuilder;
 use tracing::info;
-use tracing_actix_web::{RootSpanBuilder, TracingLogger};
+use tracing_actix_web::TracingLogger;
 use tracing_subscriber::fmt::layer;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
@@ -17,6 +17,7 @@ use tracing_subscriber::EnvFilter;
 mod config;
 mod espo;
 mod routes;
+mod response_types;
 
 #[tokio::main]
 async fn main() -> Result<()> {

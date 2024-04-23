@@ -1,12 +1,12 @@
 use crate::routes::appdata::WDatabase;
 use crate::routes::oauth::OAuth2ErrorKind;
-use actix_web::cookie::time;
 use actix_web::cookie::time::OffsetDateTime;
 use actix_web::web;
 use database::oauth2_client::{OAuth2AuthorizationCode, OAuth2Client, RefreshToken};
 use serde::{Deserialize, Serialize};
 use tap::TapFallible;
 use tracing::warn;
+use crate::response_types::Uncached;
 
 #[derive(Deserialize)]
 pub struct Form {
@@ -38,7 +38,7 @@ pub struct Response {
 pub async fn token(
     database: WDatabase,
     form: web::Form<Form>,
-) -> Result<web::Json<Response>, OAuth2ErrorKind> {
+) -> Result<Uncached<web::Json<Response>>, OAuth2ErrorKind> {
     let client = OAuth2Client::get_by_client_id(&database, &form.client_id)
         .await
         .tap_err(|e| warn!("{e}"))
@@ -80,13 +80,13 @@ pub async fn token(
                 .tap_err(|e| warn!("{e}"))
                 .map_err(|_| OAuth2ErrorKind::ServerError)?;
 
-            Ok(web::Json(Response {
+            Ok(Uncached::new(web::Json(Response {
                 access_token: atoken.token,
                 token_type: "bearer".to_string(),
                 scope: atoken.scopes.unwrap_or_default(),
-                expires_in: time::OffsetDateTime::now_utc().unix_timestamp() - atoken.expires_at,
+                expires_in: OffsetDateTime::now_utc().unix_timestamp() - atoken.expires_at,
                 refresh_token: rtoken.token,
-            }))
+            })))
         }
         GrantType::RefreshToken => {
             let rtoken = match &form.refresh_token {
@@ -110,13 +110,13 @@ pub async fn token(
                 .tap_err(|e| warn!("{e}"))
                 .map_err(|_| OAuth2ErrorKind::ServerError)?;
 
-            Ok(web::Json(Response {
+            Ok(Uncached::new(web::Json(Response {
                 access_token: atoken.token,
                 token_type: "bearer".to_string(),
                 expires_in: atoken.expires_at - OffsetDateTime::now_utc().unix_timestamp(),
                 scope: atoken.scopes.unwrap_or_default(),
                 refresh_token: rtoken.token,
-            }))
+            })))
         }
     }
 }

@@ -1,6 +1,6 @@
 use crate::routes::appdata::{WConfig, WDatabase};
 use crate::routes::oauth::{OAuth2AuthorizationResponse, OAuth2Error, OAuth2ErrorKind};
-use crate::routes::redirect::Redirect;
+use crate::response_types::Redirect;
 use actix_web::web;
 use database::oauth2_client::{AuthorizationType, OAuth2Client};
 use serde::Deserialize;

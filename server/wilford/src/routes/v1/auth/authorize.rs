@@ -1,7 +1,7 @@
 use crate::routes::appdata::WDatabase;
 use crate::routes::error::{WebError, WebResult};
 use crate::routes::oauth::{OAuth2AuthorizationResponse, OAuth2Error, OAuth2ErrorKind};
-use crate::routes::redirect::Redirect;
+use crate::response_types::Redirect;
 use actix_web::cookie::time::OffsetDateTime;
 use actix_web::web;
 use database::oauth2_client::{
