@@ -15,11 +15,17 @@ pub struct Config {
     pub database: DatabaseConfig,
     pub espo: EspoConfig,
     pub default_client: DefaultClientConfig,
+    pub oidc_signing_key: PathBuf,
+    pub oidc_public_key: PathBuf,
+    pub oidc_issuer: String,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct HttpConfig {
     pub ui_login_path: String,
+    pub authorization_endpoint: String,
+    pub token_endpoint: String,
+    pub jwks_uri_endpoint: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -55,6 +61,27 @@ impl Config {
         f.read_to_end(&mut buf).await?;
 
         Ok(serde_json::from_slice(&buf)?)
+    }
+
+    pub async fn read_oidc_signing_key(&self) -> Result<String> {
+        Self::read_pem(&self.oidc_signing_key).await
+    }
+
+    pub async fn read_oidc_public_key(&self) -> Result<String> {
+        Self::file_read_string(&self.oidc_public_key).await
+    }
+
+    async fn read_pem(p: &Path) -> Result<String> {
+        let contents = Self::file_read_string(p).await?;
+        let pem = pem::parse(contents.as_bytes())?;
+        Ok(pem.to_string())
+    }
+
+    async fn file_read_string(p: &Path) -> Result<String> {
+        let mut f = fs::File::open(p).await?;
+        let mut buf = String::new();
+        f.read_to_string(&mut buf).await?;
+        Ok(buf)
     }
 }
 

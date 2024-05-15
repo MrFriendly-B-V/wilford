@@ -1,9 +1,13 @@
 use crate::driver::Database;
 use crate::{generate_string, impl_enum_type};
+use jwt_simple::algorithms::{RS256KeyPair, RSAKeyPairLike};
+use jwt_simple::claims::Claims;
+use serde::{Deserialize, Serialize};
 use sqlx::{Decode, Encode, FromRow, Result};
 use std::collections::HashSet;
 use thiserror::Error;
 use time::{Duration, OffsetDateTime};
+use tracing::info;
 
 #[derive(Debug, Clone, FromRow)]
 pub struct OAuth2Client {
@@ -55,6 +59,13 @@ impl OAuth2PendingAuthorization {
             Self::EspoUnauthorized(v) => &v.scopes,
         }
     }
+
+    pub fn nonce(&self) -> &Option<String> {
+        match self {
+            Self::EspoAuthorized(v) => &v.nonce,
+            Self::EspoUnauthorized(v) => &v.nonce,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -64,6 +75,7 @@ pub struct OAuth2PendingAuthorizationUnauthorized {
     scopes: Option<String>,
     state: Option<String>,
     ty: AuthorizationType,
+    nonce: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -74,6 +86,7 @@ pub struct OAuth2PendingAuthorizationAuthorized {
     state: Option<String>,
     espo_user_id: String,
     ty: AuthorizationType,
+    nonce: Option<String>,
 }
 
 #[derive(FromRow)]
@@ -84,6 +97,7 @@ struct _OAuth2PendingAuthorization {
     state: Option<String>,
     espo_user_id: Option<String>,
     ty: AuthorizationType,
+    nonce: Option<String>,
 }
 
 #[derive(FromRow)]
@@ -93,6 +107,7 @@ pub struct OAuth2AuthorizationCode {
     pub expires_at: i64,
     pub scopes: Option<String>,
     pub espo_user_id: String,
+    pub nonce: Option<String>,
 }
 
 #[derive(Clone, Debug, FromRow)]
@@ -133,6 +148,7 @@ pub enum OAuth2PendingAuthorizationSetEspoIdError {
 pub enum AuthorizationType {
     AuthorizationCode,
     Implicit,
+    IdToken,
 }
 
 impl_enum_type!(AuthorizationType);
@@ -226,14 +242,16 @@ impl OAuth2Client {
         scopes: Option<String>,
         state: Option<String>,
         ty: AuthorizationType,
+        nonce: Option<String>,
     ) -> Result<OAuth2PendingAuthorization> {
         let id = Self::generate_pending_authorization_id();
-        sqlx::query("INSERT INTO oauth2_pending_authorizations (id, client_id, scopes, state, ty) VALUES (?, ?, ?, ?, ?)")
+        sqlx::query("INSERT INTO oauth2_pending_authorizations (id, client_id, scopes, state, ty, nonce) VALUES (?, ?, ?, ?, ?, ?)")
             .bind(&id)
             .bind(&self.client_id)
             .bind(&scopes)
             .bind(&state)
             .bind(&ty)
+            .bind(&nonce)
             .execute(&**driver)
             .await?;
 
@@ -244,6 +262,7 @@ impl OAuth2Client {
                 scopes,
                 state,
                 ty,
+                nonce,
             },
         ))
     }
@@ -265,12 +284,13 @@ impl OAuth2Client {
 
         let mut tx = driver.begin().await?;
 
-        sqlx::query("INSERT INTO oauth2_authorization_codes (client_id, code, expires_at, scopes, espo_user_id) VALUES (?, ?, ?, ?, ?)")
+        sqlx::query("INSERT INTO oauth2_authorization_codes (client_id, code, expires_at, scopes, espo_user_id, nonce) VALUES (?, ?, ?, ?, ?, ?)")
             .bind(&self.client_id)
             .bind(&code)
             .bind(expires_at)
             .bind(&pending.scopes)
             .bind(&pending.espo_user_id)
+            .bind(&pending.nonce)
             .execute(&mut *tx)
             .await?;
 
@@ -287,6 +307,7 @@ impl OAuth2Client {
             scopes: pending.scopes.clone(),
             expires_at,
             espo_user_id: pending.espo_user_id,
+            nonce: pending.nonce,
         })
     }
 
@@ -512,6 +533,7 @@ impl OAuth2PendingAuthorization {
                     state: v.state,
                     scopes: v.scopes,
                     ty: v.ty,
+                    nonce: v.nonce,
                 })
             }
             Self::EspoAuthorized(_) => unreachable!(),
@@ -542,6 +564,7 @@ impl From<_OAuth2PendingAuthorization> for OAuth2PendingAuthorization {
                 state: value.state,
                 espo_user_id,
                 ty: value.ty,
+                nonce: value.nonce,
             })
         } else {
             Self::EspoUnauthorized(OAuth2PendingAuthorizationUnauthorized {
@@ -550,7 +573,80 @@ impl From<_OAuth2PendingAuthorization> for OAuth2PendingAuthorization {
                 scopes: value.scopes,
                 state: value.state,
                 ty: value.ty,
+                nonce: value.nonce,
             })
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct IdTokenClaims {
+    /// Issuer Identifier for the Issuer of the response. The iss value is a case-sensitive URL using the https scheme that contains scheme, host, and optionally, port number and path components and no query or fragment components.
+    iss: String,
+    /// Subject Identifier.
+    /// A locally unique and never reassigned identifier within the Issuer for the End-User, which is intended to be consumed by the Client, e.g., 24400320 or AItOawmwtWwcT0k51BayewNvutrJUqsvl6qs7A4.
+    /// It MUST NOT exceed 255 ASCII [RFC20] characters in length. The sub value is a case-sensitive string.
+    sub: String,
+    /// Audience(s) that this ID Token is intended for. It MUST contain the OAuth 2.0 client_id of the Relying Party as an audience value. It MAY also contain identifiers for other audiences.
+    /// In the general case, the aud value is an array of case-sensitive strings. In the common special case when there is one audience, the aud value MAY be a single case-sensitive string.
+    aud: String,
+    /// Expiration time on or after which the ID Token MUST NOT be accepted anymore.
+    exp: i64,
+    /// Time at which the JWT was issued. Its value is a JSON number representing the number of seconds from 1970-01-01T00:00:00Z as measured in UTC until the date/time.
+    iat: i64,
+    /// String value used to associate a Client session with an ID Token, and to mitigate replay attacks. The value is passed through unmodified from the Authentication Request to the ID Token
+    nonce: Option<String>,
+    ///  Authorized party - the party to which the ID Token was issued. If present, it MUST contain the OAuth 2.0 Client ID of this party.
+    azp: String,
+}
+
+pub enum JwtSigningAlgorithm {
+    RS256,
+}
+
+#[derive(Debug, Error)]
+pub enum IdTokenCreationError {
+    #[error("Invalid keypair: {0}")]
+    Keypair(String),
+    #[error("Signing failed: {0}")]
+    Signing(String),
+}
+
+pub fn create_id_token(
+    issuer: String,
+    client: &OAuth2Client,
+    end_user_id: String,
+    oidc_signing_key_pem: &str,
+    access_token: &AccessToken,
+    nonce: Option<String>,
+    jwt_signing_algorithm: JwtSigningAlgorithm,
+) -> std::result::Result<String, IdTokenCreationError> {
+    let iat = OffsetDateTime::now_utc();
+
+    let id_claims = IdTokenClaims {
+        iss: issuer,
+        sub: end_user_id,
+        aud: client.client_id.clone(),
+        exp: access_token.expires_at,
+        iat: iat.unix_timestamp(),
+        nonce,
+        azp: client.client_id.clone(),
+    };
+
+    match jwt_signing_algorithm {
+        JwtSigningAlgorithm::RS256 => {
+            let key = RS256KeyPair::from_pem(oidc_signing_key_pem)
+                .map_err(|e| IdTokenCreationError::Keypair(e.to_string()))?;
+
+            let claims = Claims::with_custom_claims(
+                id_claims,
+                jwt_simple::reexports::coarsetime::Duration::from_secs(
+                    (access_token.expires_at - iat.unix_timestamp()) as u64,
+                ),
+            );
+            Ok(key
+                .sign(claims)
+                .map_err(|e| IdTokenCreationError::Signing(e.to_string()))?)
         }
     }
 }

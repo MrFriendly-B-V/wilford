@@ -25,11 +25,13 @@ services:
       context: server
       dockerfile: Dockerfile
     ports:
-      - "2521:8080"
+      - "2521:2521"
     environment:
       - "CONFIG_PATH=/config.json"
+      - "RUST_LOG=DEBUG"
     volumes:
       - "./config.json:/config.json"
+      - "./test_oidc_key.pem:/oidc.pem"
     depends_on:
       - "mariadb-wilford"
 

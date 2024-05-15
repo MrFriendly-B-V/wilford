@@ -3,11 +3,11 @@ name = "database"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 rand = "0.8.5"
 sqlx = { version = "0.7.3", features = ["mysql", "migrate", "runtime-tokio-rustls"] }
 thiserror = "1.0.51"
 time = "0.3.31"
 tracing = "0.1.40"
+jwt-simple = { version = "0.12.9", default-features = false, features = ["pure-rust"]}
+serde = { version = "1.0.193", features = ["derive"] }

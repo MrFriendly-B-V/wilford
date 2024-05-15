@@ -20,6 +20,8 @@ pub enum WebError {
     Database(#[from] database::driver::Error),
     #[error("EspoCRM error: {0}")]
     Espo(reqwest::Error),
+    #[error("Internal server error")]
+    InternalServerError,
 }
 
 impl ResponseError for WebError {
@@ -32,6 +34,7 @@ impl ResponseError for WebError {
             Self::InvalidInternalState => StatusCode::INTERNAL_SERVER_ERROR,
             Self::Database(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Self::Espo(_) => StatusCode::BAD_GATEWAY,
+            Self::InternalServerError => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 }

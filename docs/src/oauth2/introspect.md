@@ -1,4 +1,4 @@
-# Instrospect
+# Introspect
 Token introspection endpoint.  
 See also: [RFC7662](https://datatracker.ietf.org/doc/html/rfc7662)
 

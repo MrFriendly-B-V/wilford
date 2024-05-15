@@ -7,11 +7,14 @@ Your applications will then authenticate with Wilford,
 and your users can continue using their EspoCRM login credentials.
 
 ## Development
-- Copy the sample config to `config.json`
-- Start all docker containers with docker-compose:
+- Start everything with
+```bash
+make up
 ```
-docker compose up -d
-```
+This will:
+- Create an OIDC signing key if it doesn't exist
+- Copy `sample_config.json` to `config.json
+- Start all containers
 
 The following services will be available:
 - The backend, on port [2521](http://localhost:2512)
@@ -32,7 +35,12 @@ After starting, you should configure an API-client in EspoCRM:
 10. Select the role you just created under `Roles`
 11. Set `Authentication method` to `HMAC` and select `Save`
 12. Copy the `API Key` and `Secret Key` to `config.json`
-13. Hit Ctrl+C and run `docker compose up` again.
+13. Restart Wilford
+```bash
+docker-compose down
+make up 
+```
+
 
 # License
 MIT or Apache-2.0, at your option

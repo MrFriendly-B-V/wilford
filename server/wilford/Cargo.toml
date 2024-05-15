@@ -24,3 +24,4 @@ tokio = { version = "1.35.1", features = ["full"] }
 tracing = "0.1.40"
 tracing-actix-web = "0.7.9"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+pem = "3.0.4"

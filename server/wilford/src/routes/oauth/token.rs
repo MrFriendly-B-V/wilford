@@ -1,12 +1,15 @@
-use crate::routes::appdata::WDatabase;
+use crate::response_types::Uncached;
+use crate::routes::appdata::{WConfig, WDatabase};
 use crate::routes::oauth::OAuth2ErrorKind;
+use crate::routes::WOidcSigningKey;
 use actix_web::cookie::time::OffsetDateTime;
 use actix_web::web;
-use database::oauth2_client::{OAuth2AuthorizationCode, OAuth2Client, RefreshToken};
+use database::oauth2_client::{
+    create_id_token, JwtSigningAlgorithm, OAuth2AuthorizationCode, OAuth2Client, RefreshToken,
+};
 use serde::{Deserialize, Serialize};
 use tap::TapFallible;
 use tracing::warn;
-use crate::response_types::Uncached;
 
 #[derive(Deserialize)]
 pub struct Form {
@@ -33,11 +36,14 @@ pub struct Response {
     expires_in: i64,
     refresh_token: String,
     scope: String,
+    id_token: String,
 }
 
 pub async fn token(
     database: WDatabase,
     form: web::Form<Form>,
+    config: WConfig,
+    oidc_signing_key: WOidcSigningKey,
 ) -> Result<Uncached<web::Json<Response>>, OAuth2ErrorKind> {
     let client = OAuth2Client::get_by_client_id(&database, &form.client_id)
         .await
@@ -74,6 +80,8 @@ pub async fn token(
                 return Err(OAuth2ErrorKind::InvalidGrant);
             }
 
+            let authorization_nonce = authorization.nonce.clone();
+
             let (atoken, rtoken) = client
                 .new_token_pair(&database, authorization)
                 .await
@@ -81,6 +89,16 @@ pub async fn token(
                 .map_err(|_| OAuth2ErrorKind::ServerError)?;
 
             Ok(Uncached::new(web::Json(Response {
+                id_token: create_id_token(
+                    config.oidc_issuer.clone(),
+                    &client,
+                    rtoken.espo_user_id,
+                    &oidc_signing_key.0,
+                    &atoken,
+                    authorization_nonce,
+                    JwtSigningAlgorithm::RS256,
+                )
+                .map_err(|_| OAuth2ErrorKind::ServerError)?,
                 access_token: atoken.token,
                 token_type: "bearer".to_string(),
                 scope: atoken.scopes.unwrap_or_default(),
@@ -111,6 +129,16 @@ pub async fn token(
                 .map_err(|_| OAuth2ErrorKind::ServerError)?;
 
             Ok(Uncached::new(web::Json(Response {
+                id_token: create_id_token(
+                    config.oidc_issuer.clone(),
+                    &client,
+                    rtoken.espo_user_id,
+                    &oidc_signing_key.0,
+                    &atoken,
+                    None,
+                    JwtSigningAlgorithm::RS256,
+                )
+                .map_err(|_| OAuth2ErrorKind::ServerError)?,
                 access_token: atoken.token,
                 token_type: "bearer".to_string(),
                 expires_in: atoken.expires_at - OffsetDateTime::now_utc().unix_timestamp(),

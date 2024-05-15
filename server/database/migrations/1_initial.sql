@@ -14,6 +14,7 @@ CREATE TABLE oauth2_pending_authorizations (
     state TEXT DEFAULT NULL,
     espo_user_id TEXT DEFAULT NULL,
     ty TEXT NOT NULL,
+    nonce TEXT DEFAULT NULL,
     PRIMARY KEY (id)
 );
 
@@ -41,6 +42,7 @@ CREATE TABLE oauth2_authorization_codes (
     expires_at BIGINT NOT NULL,
     scopes TEXT DEFAULT NULL,
     espo_user_id TEXT NOT NULL,
+    nonce TEXT DEFAULT NULL,
     PRIMARY KEY (code)
 );
 

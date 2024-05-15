@@ -11,8 +11,14 @@ help:
 	echo "- upload-docs		: Build and upload the docs Docker image"
 	echo "- upload-ui	 	: Build and upload the ui Docker image"
 
+test_oidc_key.pem:
+	ssh-keygen -t rsa -b 4096 -m PEM -q -N "" -f ./test_oidc_key.pem
+
+config.json:
+	cp sample_config.json config.json
+
 .PHONY: up
-up:
+up: test_oidc_key.pem config.json
 	docker compose up -d
 	echo "Wilford UI available at 	http://localhost:2522"
 	echo "Wilford Docs available at	http://localhost:2523"
@@ -45,6 +51,6 @@ build-docs:
 .PHONY: build-ui
 build-ui:
 	# Patch for production
-	sed -i "s|createWebHistory('/')|createWebHistory('/wilford')|" ui/src/router/index.ts
+	#sed -i "s|createWebHistory('/')|createWebHistory('/wilford')|" ui/src/router/index.ts
 
 	docker build -t registry.mrfriendly.uk/wilford-ui ui/

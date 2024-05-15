@@ -1,6 +1,6 @@
+use crate::response_types::Empty;
 use crate::routes::appdata::WDatabase;
 use crate::routes::auth::Auth;
-use crate::response_types::Empty;
 use crate::routes::error::{WebError, WebResult};
 use crate::routes::v1::MANAGE_SCOPE;
 use actix_web::web;

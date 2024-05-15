@@ -1,0 +1,14 @@
+version: '3.2'
+services:
+  oauth2_proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy
+    environment:
+      - "OAUTH2_PROXY_COOKIE_SECRET=VsZqXqHQzwdPUcEUDgNxmQvTRZ46DtlQr8q-HtomkL8="
+      - "OAUTH2_PROXY_CLIENT_ID=Vy1l9P2X7RFf4jHfo3OiLHtShllSZKDa"
+      - "OAUTH2_PROXY_CLIENT_SECRET=d4HtCZLeZvRvldGOxQd18l5a46hZEl6WWoocL2IbkfcozLH6"
+      - "OAUTH2_PROXY_OIDC_ISSUER_URL=http://localhost:2521"
+      - "OAUTH2_PROXY_REDIRECT_URL=http://127.0.0.1:4180/oauth2/callback"
+      - "OAUTH2_PROXY_PROVIDER=oidc"
+      - "OAUTH2_PROXY_EMAIL_DOMAINS=*"
+      - "OAUTH2_PROXY_OIDC_JWKS_URL=http://localhost:2521/.well-known/jwks.json"
+    network_mode: "host"

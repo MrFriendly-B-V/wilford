@@ -9,7 +9,6 @@ This endpoint provides information about the OAuth2 client
 {
     "name": "<name of the client>",
     "client_id": "<OAuth2 client_id>",
-    "client_secret": "<OAuth2 client_secret>",
     "redirect_uri": "<OAuth2 redirect_uri>"
 }
 ```

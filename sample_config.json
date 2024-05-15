@@ -1,19 +1,24 @@
 {
-    "http": {
-      "ui_login_path": "http://localhost:2522/login"
-    },
-    "database": {
-      "user": "wilford",
-      "password": "wilford",
-      "host": "mariadb-wilford",
-      "database": "wilford"
-    },
-    "espo": {
-      "host": "http://espocrm",
-      "api_key": "",
-      "secret_key": ""
-    },
-    "default_client": {
-      "redirect_uri": "http://localhost:2522/login-ok"
-    }
-  }
+  "http": {
+    "ui_login_path": "http://localhost:2522/login",
+    "authorization_endpoint": "http://localhost:2521/api/oauth/authorize",
+    "token_endpoint": "http://localhost:2521/api/oauth/token",
+    "jwks_uri_endpoint": "https://localhost:2521/.well-known/jwks.json"
+  },
+  "database": {
+    "user": "wilford",
+    "password": "wilford",
+    "host": "mariadb-wilford",
+    "database": "wilford"
+  },
+  "espo": {
+    "host": "http://espocrm",
+    "api_key": "",
+    "secret_key": ""
+  },
+  "default_client": {
+    "redirect_uri": "http://localhost:2522/login-ok"
+  },
+  "oidc_signing_key": "/oidc.pem",
+  "oidc_issuer": "http://localhost:2521"
+}
