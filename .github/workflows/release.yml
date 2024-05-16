@@ -1,0 +1,18 @@
+name: Release 
+
+on:
+  tag:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  fmt:
+    name: Server build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - run: make build-server
+    - run: docker tag registry.mrfriendly.uk/wilford:latest registry.mrfriendly.uk/wilford:${{ github.ref_name }}
+    - run: docker push registry.mrfriendly.uk/wilford:latest
+    - run: docker push registry.mrfriendly.uk/wilford:${{ github.ref_name }}
