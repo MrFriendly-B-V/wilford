@@ -3,6 +3,7 @@ name: Release
 on:
   push:
     tags:
+    - '*'
 
 env:
   CARGO_TERM_COLOR: always
@@ -41,7 +42,7 @@ jobs:
     - uses: actions/checkout@v4
     - run: cargo install mdbook --locked
 
-    - run: make build-ui
+    - run: make build-docs
     - run: docker tag $DOCK_REG/wilford-docs:latest $DOCK_REG/wilford-docs:${{ github.ref_name }}
     - run: docker push $DOCK_REG/wilford-docs:latest
     - run: docker push $DOCK_REG/wilford-docs:${{ github.ref_name }}
