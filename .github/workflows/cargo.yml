@@ -36,6 +36,15 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - name: Cache
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          server/target
+        key: ${{ runner.os }}-${{ matrix.toolchain }}-${{ matrix.target }}-cargo-${{ hashFiles('server/**/Cargo.lock') }}
+
     - run: sudo apt install -y musl-tools
     - run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
     - run: rustup target add --toolchain ${{ matrix.toolchain }} ${{ matrix.target }}
