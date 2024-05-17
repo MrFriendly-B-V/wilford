@@ -7,7 +7,7 @@ use sqlx::{Decode, Encode, FromRow, Result};
 use std::collections::HashSet;
 use thiserror::Error;
 use time::{Duration, OffsetDateTime};
-use tracing::info;
+use crate::user::User;
 
 #[derive(Debug, Clone, FromRow)]
 pub struct OAuth2Client {
@@ -20,50 +20,50 @@ pub struct OAuth2Client {
 
 #[derive(Debug, Clone)]
 pub enum OAuth2PendingAuthorization {
-    EspoUnauthorized(OAuth2PendingAuthorizationUnauthorized),
-    EspoAuthorized(OAuth2PendingAuthorizationAuthorized),
+    Unauthorized(OAuth2PendingAuthorizationUnauthorized),
+    Authorized(OAuth2PendingAuthorizationAuthorized),
 }
 
 impl OAuth2PendingAuthorization {
     pub fn ty(&self) -> &AuthorizationType {
         match self {
-            Self::EspoUnauthorized(v) => &v.ty,
-            Self::EspoAuthorized(v) => &v.ty,
+            Self::Unauthorized(v) => &v.ty,
+            Self::Authorized(v) => &v.ty,
         }
     }
 
     pub fn id(&self) -> &String {
         match self {
-            Self::EspoAuthorized(v) => &v.id,
-            Self::EspoUnauthorized(v) => &v.id,
+            Self::Authorized(v) => &v.id,
+            Self::Unauthorized(v) => &v.id,
         }
     }
 
     pub fn client_id(&self) -> &String {
         match self {
-            Self::EspoAuthorized(v) => &v.client_id,
-            Self::EspoUnauthorized(v) => &v.client_id,
+            Self::Authorized(v) => &v.client_id,
+            Self::Unauthorized(v) => &v.client_id,
         }
     }
 
     pub fn state(&self) -> &Option<String> {
         match self {
-            Self::EspoAuthorized(v) => &v.state,
-            Self::EspoUnauthorized(v) => &v.state,
+            Self::Authorized(v) => &v.state,
+            Self::Unauthorized(v) => &v.state,
         }
     }
 
     pub fn scopes(&self) -> &Option<String> {
         match self {
-            Self::EspoAuthorized(v) => &v.scopes,
-            Self::EspoUnauthorized(v) => &v.scopes,
+            Self::Authorized(v) => &v.scopes,
+            Self::Unauthorized(v) => &v.scopes,
         }
     }
 
     pub fn nonce(&self) -> &Option<String> {
         match self {
-            Self::EspoAuthorized(v) => &v.nonce,
-            Self::EspoUnauthorized(v) => &v.nonce,
+            Self::Authorized(v) => &v.nonce,
+            Self::Unauthorized(v) => &v.nonce,
         }
     }
 }
@@ -84,7 +84,7 @@ pub struct OAuth2PendingAuthorizationAuthorized {
     client_id: String,
     scopes: Option<String>,
     state: Option<String>,
-    espo_user_id: String,
+    user_id: String,
     ty: AuthorizationType,
     nonce: Option<String>,
 }
@@ -95,7 +95,7 @@ struct _OAuth2PendingAuthorization {
     client_id: String,
     scopes: Option<String>,
     state: Option<String>,
-    espo_user_id: Option<String>,
+    user_id: Option<String>,
     ty: AuthorizationType,
     nonce: Option<String>,
 }
@@ -106,7 +106,7 @@ pub struct OAuth2AuthorizationCode {
     pub client_id: String,
     pub expires_at: i64,
     pub scopes: Option<String>,
-    pub espo_user_id: String,
+    pub user_id: String,
     pub nonce: Option<String>,
 }
 
@@ -116,7 +116,7 @@ pub struct AccessToken {
     pub client_id: String,
     pub expires_at: i64,
     pub issued_at: i64,
-    pub espo_user_id: String,
+    pub user_id: String,
     pub scopes: Option<String>,
 }
 
@@ -124,7 +124,7 @@ pub struct AccessToken {
 pub struct RefreshToken {
     pub token: String,
     pub client_id: String,
-    pub espo_user_id: String,
+    pub user_id: String,
     pub scopes: Option<String>,
 }
 
@@ -132,12 +132,12 @@ pub struct RefreshToken {
 pub enum OAuth2AuthorizationCodeCreationError {
     #[error("{0}")]
     Sqlx(#[from] sqlx::Error),
-    #[error("Not authorized with EspoCRM yet")]
+    #[error("Not authorized yet")]
     Unauthorized,
 }
 
 #[derive(Debug, Error)]
-pub enum OAuth2PendingAuthorizationSetEspoIdError {
+pub enum OAuth2PendingAuthorizationSetUserIdError {
     #[error("{0}")]
     Sqlx(#[from] sqlx::Error),
     #[error("Cannot overwrite existing authorization")]
@@ -255,7 +255,7 @@ impl OAuth2Client {
             .execute(&**driver)
             .await?;
 
-        Ok(OAuth2PendingAuthorization::EspoUnauthorized(
+        Ok(OAuth2PendingAuthorization::Unauthorized(
             OAuth2PendingAuthorizationUnauthorized {
                 id,
                 client_id: self.client_id.clone(),
@@ -273,8 +273,8 @@ impl OAuth2Client {
         pending: OAuth2PendingAuthorization,
     ) -> std::result::Result<OAuth2AuthorizationCode, OAuth2AuthorizationCodeCreationError> {
         let pending = match pending {
-            OAuth2PendingAuthorization::EspoAuthorized(v) => v,
-            OAuth2PendingAuthorization::EspoUnauthorized(_) => {
+            OAuth2PendingAuthorization::Authorized(v) => v,
+            OAuth2PendingAuthorization::Unauthorized(_) => {
                 return Err(OAuth2AuthorizationCodeCreationError::Unauthorized)
             }
         };
@@ -284,12 +284,12 @@ impl OAuth2Client {
 
         let mut tx = driver.begin().await?;
 
-        sqlx::query("INSERT INTO oauth2_authorization_codes (client_id, code, expires_at, scopes, espo_user_id, nonce) VALUES (?, ?, ?, ?, ?, ?)")
+        sqlx::query("INSERT INTO oauth2_authorization_codes (client_id, code, expires_at, scopes, user_id, nonce) VALUES (?, ?, ?, ?, ?, ?)")
             .bind(&self.client_id)
             .bind(&code)
             .bind(expires_at)
             .bind(&pending.scopes)
-            .bind(&pending.espo_user_id)
+            .bind(&pending.user_id)
             .bind(&pending.nonce)
             .execute(&mut *tx)
             .await?;
@@ -306,7 +306,7 @@ impl OAuth2Client {
             code,
             scopes: pending.scopes.clone(),
             expires_at,
-            espo_user_id: pending.espo_user_id,
+            user_id: pending.user_id,
             nonce: pending.nonce,
         })
     }
@@ -317,8 +317,8 @@ impl OAuth2Client {
         authorization: OAuth2PendingAuthorization,
     ) -> std::result::Result<AccessToken, OAuth2AuthorizationCodeCreationError> {
         let authorization = match authorization {
-            OAuth2PendingAuthorization::EspoAuthorized(v) => v,
-            OAuth2PendingAuthorization::EspoUnauthorized(_) => {
+            OAuth2PendingAuthorization::Authorized(v) => v,
+            OAuth2PendingAuthorization::Unauthorized(_) => {
                 return Err(OAuth2AuthorizationCodeCreationError::Unauthorized)
             }
         };
@@ -329,12 +329,12 @@ impl OAuth2Client {
 
         let mut tx = driver.begin().await?;
 
-        sqlx::query("INSERT INTO oauth2_access_tokens (token, client_id, expires_at, issued_at, espo_user_id, scopes) VALUES (?, ?, ?, ?, ?, ?)")
+        sqlx::query("INSERT INTO oauth2_access_tokens (token, client_id, expires_at, issued_at, user_id, scopes) VALUES (?, ?, ?, ?, ?, ?)")
             .bind(&atoken)
             .bind(&self.client_id)
             .bind(expires_at)
             .bind(issued_at)
-            .bind(&authorization.espo_user_id)
+            .bind(&authorization.user_id)
             .bind(&authorization.scopes)
             .execute(&mut *tx)
             .await?;
@@ -350,7 +350,7 @@ impl OAuth2Client {
             token: atoken,
             issued_at,
             expires_at,
-            espo_user_id: authorization.espo_user_id,
+            user_id: authorization.user_id,
             scopes: authorization.scopes,
             client_id: self.client_id.clone(),
         })
@@ -369,21 +369,21 @@ impl OAuth2Client {
         let mut tx = driver.begin().await?;
 
         // Access token
-        sqlx::query("INSERT INTO oauth2_access_tokens (token, client_id, expires_at, issued_at, espo_user_id, scopes) VALUES (?, ?, ?, ?, ?, ?)")
+        sqlx::query("INSERT INTO oauth2_access_tokens (token, client_id, expires_at, issued_at, user_id, scopes) VALUES (?, ?, ?, ?, ?, ?)")
             .bind(&atoken)
             .bind(&self.client_id)
             .bind(expires_at)
             .bind(issued_at)
-            .bind(&authorization.espo_user_id)
+            .bind(&authorization.user_id)
             .bind(&authorization.scopes)
             .execute(&mut *tx)
             .await?;
 
         // Refresh token
-        sqlx::query("INSERT INTO oauth2_refresh_tokens (token, client_id, espo_user_id, scopes) VALUES (?, ?, ?, ?)")
+        sqlx::query("INSERT INTO oauth2_refresh_tokens (token, client_id, user_id, scopes) VALUES (?, ?, ?, ?)")
             .bind(&rtoken)
             .bind(&self.client_id)
-            .bind(&authorization.espo_user_id)
+            .bind(&authorization.user_id)
             .bind(&authorization.scopes)
             .execute(&mut *tx)
             .await?;
@@ -402,13 +402,13 @@ impl OAuth2Client {
                 client_id: self.client_id.clone(),
                 expires_at,
                 issued_at,
-                espo_user_id: authorization.espo_user_id.clone(),
+                user_id: authorization.user_id.clone(),
                 scopes: authorization.scopes.clone(),
             },
             RefreshToken {
                 token: rtoken,
                 client_id: self.client_id.clone(),
-                espo_user_id: authorization.espo_user_id.clone(),
+                user_id: authorization.user_id.clone(),
                 scopes: authorization.scopes.clone(),
             },
         ))
@@ -423,11 +423,11 @@ impl OAuth2Client {
         let expires_at = Self::generate_access_token_expiry();
         let issued_at = OffsetDateTime::now_utc().unix_timestamp();
 
-        sqlx::query("INSERT INTO oauth2_access_tokens (token, client_id, expires_at, issued_at, espo_user_id, scopes) VALUES (?, ?, ?, ?, ?, ?)")
+        sqlx::query("INSERT INTO oauth2_access_tokens (token, client_id, expires_at, issued_at, user_id, scopes) VALUES (?, ?, ?, ?, ?, ?)")
             .bind(&atoken)
             .bind(&self.client_id)
             .bind(expires_at)
-            .bind(&refresh_token.espo_user_id)
+            .bind(&refresh_token.user_id)
             .bind(&refresh_token.scopes)
             .execute(&**driver)
             .await?;
@@ -438,7 +438,7 @@ impl OAuth2Client {
             scopes: refresh_token.scopes.clone(),
             issued_at,
             expires_at,
-            espo_user_id: refresh_token.espo_user_id.clone(),
+            user_id: refresh_token.user_id.clone(),
         })
     }
 }
@@ -506,37 +506,37 @@ impl OAuth2PendingAuthorization {
         )
     }
 
-    pub async fn set_espo_user_id(
+    pub async fn set_user_id(
         self,
         driver: &Database,
-        espo_user_id: &str,
-    ) -> std::result::Result<Self, OAuth2PendingAuthorizationSetEspoIdError> {
+        user_id: &str,
+    ) -> std::result::Result<Self, OAuth2PendingAuthorizationSetUserIdError> {
         let id = match &self {
-            Self::EspoUnauthorized(v) => &v.id,
-            Self::EspoAuthorized(_) => {
-                return Err(OAuth2PendingAuthorizationSetEspoIdError::AlreadyAuthorized)
+            Self::Unauthorized(v) => &v.id,
+            Self::Authorized(_) => {
+                return Err(OAuth2PendingAuthorizationSetUserIdError::AlreadyAuthorized)
             }
         };
 
-        sqlx::query("UPDATE oauth2_pending_authorizations SET espo_user_id = ? WHERE id = ?")
-            .bind(espo_user_id)
+        sqlx::query("UPDATE oauth2_pending_authorizations SET user_id = ? WHERE id = ?")
+            .bind(user_id)
             .bind(&id)
             .execute(&**driver)
             .await?;
 
         let new_self = match self {
-            Self::EspoUnauthorized(v) => {
-                Self::EspoAuthorized(OAuth2PendingAuthorizationAuthorized {
+            Self::Unauthorized(v) => {
+                Self::Authorized(OAuth2PendingAuthorizationAuthorized {
                     id: v.id,
                     client_id: v.client_id,
-                    espo_user_id: espo_user_id.to_string(),
+                    user_id: user_id.to_string(),
                     state: v.state,
                     scopes: v.scopes,
                     ty: v.ty,
                     nonce: v.nonce,
                 })
             }
-            Self::EspoAuthorized(_) => unreachable!(),
+            Self::Authorized(_) => unreachable!(),
         };
 
         Ok(new_self)
@@ -556,18 +556,18 @@ impl OAuth2AuthorizationCode {
 
 impl From<_OAuth2PendingAuthorization> for OAuth2PendingAuthorization {
     fn from(value: _OAuth2PendingAuthorization) -> Self {
-        if let Some(espo_user_id) = value.espo_user_id {
-            Self::EspoAuthorized(OAuth2PendingAuthorizationAuthorized {
+        if let Some(user_id) = value.user_id {
+            Self::Authorized(OAuth2PendingAuthorizationAuthorized {
                 id: value.id,
                 client_id: value.client_id,
                 scopes: value.scopes,
                 state: value.state,
-                espo_user_id,
+                user_id,
                 ty: value.ty,
                 nonce: value.nonce,
             })
         } else {
-            Self::EspoUnauthorized(OAuth2PendingAuthorizationUnauthorized {
+            Self::Unauthorized(OAuth2PendingAuthorizationUnauthorized {
                 id: value.id,
                 client_id: value.client_id,
                 scopes: value.scopes,
@@ -598,6 +598,12 @@ pub struct IdTokenClaims {
     nonce: Option<String>,
     ///  Authorized party - the party to which the ID Token was issued. If present, it MUST contain the OAuth 2.0 Client ID of this party.
     azp: String,
+
+    // We also have some custom claims, this is allowed by the JWT spec
+
+    sub_email: String,
+    sub_name: String,
+    sub_is_admin: bool,
 }
 
 pub enum JwtSigningAlgorithm {
@@ -615,7 +621,7 @@ pub enum IdTokenCreationError {
 pub fn create_id_token(
     issuer: String,
     client: &OAuth2Client,
-    end_user_id: String,
+    user: &User,
     oidc_signing_key_pem: &str,
     access_token: &AccessToken,
     nonce: Option<String>,
@@ -624,13 +630,18 @@ pub fn create_id_token(
     let iat = OffsetDateTime::now_utc();
 
     let id_claims = IdTokenClaims {
+        // Standard claims
         iss: issuer,
-        sub: end_user_id,
+        sub: user.user_id.clone(),
         aud: client.client_id.clone(),
         exp: access_token.expires_at,
         iat: iat.unix_timestamp(),
         nonce,
         azp: client.client_id.clone(),
+        // Custom claims
+        sub_name: user.name.clone(),
+        sub_is_admin: user.is_admin,
+        sub_email: user.email.clone(),
     };
 
     match jwt_signing_algorithm {

@@ -9,6 +9,7 @@ use database::oauth2_client::{
     create_id_token, AccessToken, AuthorizationType, JwtSigningAlgorithm,
     OAuth2AuthorizationCodeCreationError, OAuth2Client, OAuth2PendingAuthorization,
 };
+use database::user::User;
 
 use crate::response_types::Redirect;
 use crate::routes::appdata::{WConfig, WDatabase};
@@ -97,7 +98,8 @@ pub async fn authorize(
                         create_id_token(
                             config.oidc_issuer.clone(),
                             &client,
-                            access_token.espo_user_id.clone(),
+                            &User::get_by_id(&database, &access_token.user_id).await?
+                                .ok_or(WebError::InternalServerError)?,
                             &oidc_signing_key.0,
                             &access_token,
                             nonce,

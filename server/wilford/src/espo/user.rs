@@ -9,6 +9,7 @@ use tracing::warn;
 pub struct EspoUser {
     pub id: String,
     pub name: String,
+    pub email_address: String,
     pub is_active: bool,
     #[serde(rename(deserialize = "type"))]
     pub user_type: String,

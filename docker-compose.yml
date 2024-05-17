@@ -31,7 +31,8 @@ services:
       - "RUST_LOG=DEBUG"
     volumes:
       - "./config.json:/config.json"
-      - "./test_oidc_key.pem:/oidc.pem"
+      - "./test_oidc_key.pem:/test_oidc_key.pem"
+      - "./test_oidc_key.pem.pub:/test_oidc_key.pem.pub"
     depends_on:
       - "mariadb-wilford"
 

@@ -10,6 +10,7 @@ use database::oauth2_client::{
 use serde::{Deserialize, Serialize};
 use tap::TapFallible;
 use tracing::warn;
+use database::user::User;
 
 #[derive(Deserialize)]
 pub struct Form {
@@ -92,7 +93,9 @@ pub async fn token(
                 id_token: create_id_token(
                     config.oidc_issuer.clone(),
                     &client,
-                    rtoken.espo_user_id,
+                    &User::get_by_id(&database, &rtoken.user_id).await
+                        .map_err(|_| OAuth2ErrorKind::ServerError)?
+                        .ok_or(OAuth2ErrorKind::ServerError)?,
                     &oidc_signing_key.0,
                     &atoken,
                     authorization_nonce,
@@ -132,7 +135,9 @@ pub async fn token(
                 id_token: create_id_token(
                     config.oidc_issuer.clone(),
                     &client,
-                    rtoken.espo_user_id,
+                    &User::get_by_id(&database, &rtoken.user_id).await
+                        .map_err(|_| OAuth2ErrorKind::ServerError)?
+                        .ok_or(OAuth2ErrorKind::ServerError)?,
                     &oidc_signing_key.0,
                     &atoken,
                     None,

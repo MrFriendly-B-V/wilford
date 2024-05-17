@@ -55,7 +55,7 @@ pub async fn login(
             // Only exceptions to this are Espo admins, they may have all scopes,
             // and the OIDC scopes
             match User::get_by_id(&database, &id).await? {
-                Some(user) if user.is_espo_admin => {}
+                Some(user) if user.is_admin => {}
                 Some(user) => {
                     let permitted_scopes =
                         HashSet::from_iter(user.list_permitted_scopes(&database).await?);
@@ -83,12 +83,13 @@ pub async fn login(
                         &database,
                         id.clone(),
                         espo_user.name,
+                        espo_user.email_address,
                         espo_user.user_type.eq("admin"),
                     )
                     .await?;
 
                     // No permitted scopes are granted yet
-                    if !user.is_espo_admin {
+                    if !user.is_admin {
                         // Remove the OIDC scopes
                         let oidc_scopes = oidc_scopes();
                         let disallowed_scopes =
@@ -102,7 +103,7 @@ pub async fn login(
             }
 
             authorization
-                .set_espo_user_id(&database, &id)
+                .set_user_id(&database, &id)
                 .await
                 .map_err(|_| WebError::BadRequest)?;
 

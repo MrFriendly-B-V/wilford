@@ -88,7 +88,7 @@ pub async fn introspect(
         }
     }
 
-    let user = User::get_by_id(&database, &token.espo_user_id)
+    let user = User::get_by_id(&database, &token.user_id)
         .await?
         .ok_or(IntrospectError::Internal)?;
 
@@ -101,6 +101,6 @@ pub async fn introspect(
         exp: token.expires_at,
         iat: token.issued_at,
         nbf: token.issued_at,
-        sub: token.espo_user_id,
+        sub: token.user_id,
     }))
 }

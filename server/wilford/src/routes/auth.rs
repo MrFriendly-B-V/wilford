@@ -47,7 +47,7 @@ impl FromRequest for Auth {
                 None => return Err(WebError::Unauthorized),
             };
 
-            let espo_user = EspoUser::get_by_id(&espo_client, &token_info.espo_user_id)
+            let espo_user = EspoUser::get_by_id(&espo_client, &token_info.user_id)
                 .await
                 .map_err(|e| WebError::Espo(e))?;
 

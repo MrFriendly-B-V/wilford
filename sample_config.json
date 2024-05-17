@@ -19,6 +19,7 @@
   "default_client": {
     "redirect_uri": "http://localhost:2522/login-ok"
   },
-  "oidc_signing_key": "/oidc.pem",
+  "oidc_signing_key": "/test_oidc_key.pem",
+  "oidc_public_key": "/test_oidc_key.pem.pub",
   "oidc_issuer": "http://localhost:2521"
 }

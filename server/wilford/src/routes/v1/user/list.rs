@@ -27,8 +27,8 @@ pub async fn list(database: WDatabase, auth: Auth) -> WebResult<web::Json<Respon
         .into_iter()
         .map(|u| User {
             name: u.name,
-            espo_user_id: u.espo_user_id,
-            is_admin: u.is_espo_admin,
+            espo_user_id: u.user_id,
+            is_admin: u.is_admin,
         })
         .collect::<Vec<_>>();
 

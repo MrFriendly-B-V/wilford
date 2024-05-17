@@ -24,8 +24,8 @@ pub async fn authorization_info(
         .ok_or(WebError::NotFound)?;
 
     match &authorization {
-        OAuth2PendingAuthorization::EspoAuthorized(_) => {}
-        OAuth2PendingAuthorization::EspoUnauthorized(_) => return Err(WebError::Unauthorized),
+        OAuth2PendingAuthorization::Authorized(_) => {}
+        OAuth2PendingAuthorization::Unauthorized(_) => return Err(WebError::Unauthorized),
     }
 
     let client = OAuth2Client::get_by_client_id(&database, &authorization.client_id())

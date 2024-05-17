@@ -13,7 +13,7 @@ make up
 ```
 This will:
 - Create an OIDC signing key if it doesn't exist
-- Copy `sample_config.json` to `config.json
+- Copy `sample_config.json` to `config.json`
 - Start all containers
 
 The following services will be available:
@@ -41,6 +41,14 @@ docker-compose down
 make up 
 ```
 
+## Generate OIDC Key
+```bash
+# Private key
+openssl genrsa -out ./oidc.pem 4096
+
+# Public key
+openssl rsa -in ./oidc.pem -pubout -outform PEM -out ./oidc.pem.pub
+```
 
 # License
 MIT or Apache-2.0, at your option
