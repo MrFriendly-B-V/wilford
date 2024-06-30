@@ -10,6 +10,7 @@ pub struct OpenidConfiguration {
     response_types_supported: Vec<String>,
     grant_types_supported: Vec<String>,
     id_token_signing_alg_values_supported: Vec<String>,
+    jwks_uri: String,
 }
 
 pub async fn openid_configuration(config: WConfig) -> web::Json<OpenidConfiguration> {
@@ -24,5 +25,6 @@ pub async fn openid_configuration(config: WConfig) -> web::Json<OpenidConfigurat
         ],
         grant_types_supported: vec!["authorization_code".to_string(), "implicit".to_string()],
         id_token_signing_alg_values_supported: vec!["RS256".to_string()],
+        jwks_uri: config.http.jwks_uri_endpoint.clone(),
     })
 }

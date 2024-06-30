@@ -2935,6 +2935,7 @@ dependencies = [
  "noiseless-tracing-actix-web",
  "pem",
  "reqwest",
+ "rsa",
  "serde",
  "serde_json",
  "serde_qs",
@@ -2943,6 +2944,7 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-actix-web",
+ "tracing-error",
  "tracing-subscriber",
 ]
 

@@ -1,4 +1,5 @@
 use crate::driver::Database;
+use crate::user::User;
 use crate::{generate_string, impl_enum_type};
 use jwt_simple::algorithms::{RS256KeyPair, RSAKeyPairLike};
 use jwt_simple::claims::Claims;
@@ -7,7 +8,7 @@ use sqlx::{Decode, Encode, FromRow, Result};
 use std::collections::HashSet;
 use thiserror::Error;
 use time::{Duration, OffsetDateTime};
-use crate::user::User;
+use tracing::instrument;
 
 #[derive(Debug, Clone, FromRow)]
 pub struct OAuth2Client {
@@ -100,7 +101,7 @@ struct _OAuth2PendingAuthorization {
     nonce: Option<String>,
 }
 
-#[derive(FromRow)]
+#[derive(Debug, FromRow)]
 pub struct OAuth2AuthorizationCode {
     pub code: String,
     pub client_id: String,
@@ -120,7 +121,7 @@ pub struct AccessToken {
     pub scopes: Option<String>,
 }
 
-#[derive(FromRow)]
+#[derive(Debug, FromRow)]
 pub struct RefreshToken {
     pub token: String,
     pub client_id: String,
@@ -186,6 +187,7 @@ impl OAuth2Client {
         (OffsetDateTime::now_utc() + Duration::hours(1)).unix_timestamp()
     }
 
+    #[instrument]
     pub async fn new(
         driver: &Database,
         name: String,
@@ -213,12 +215,14 @@ impl OAuth2Client {
         })
     }
 
+    #[instrument]
     pub async fn list(driver: &Database) -> Result<Vec<Self>> {
         Ok(sqlx::query_as("SELECT * FROM oauth2_clients")
             .fetch_all(&**driver)
             .await?)
     }
 
+    #[instrument]
     pub async fn delete(self, driver: &Database) -> Result<()> {
         sqlx::query("DELETE FROM oauth2_clients WHERE client_id = ?")
             .bind(self.client_id)
@@ -227,6 +231,7 @@ impl OAuth2Client {
         Ok(())
     }
 
+    #[instrument]
     pub async fn get_by_client_id(driver: &Database, client_id: &str) -> Result<Option<Self>> {
         Ok(
             sqlx::query_as("SELECT * FROM oauth2_clients WHERE client_id = ?")
@@ -236,6 +241,7 @@ impl OAuth2Client {
         )
     }
 
+    #[instrument]
     pub async fn new_pending_authorization(
         &self,
         driver: &Database,
@@ -267,6 +273,7 @@ impl OAuth2Client {
         ))
     }
 
+    #[instrument]
     pub async fn new_authorization_code(
         &self,
         driver: &Database,
@@ -311,6 +318,7 @@ impl OAuth2Client {
         })
     }
 
+    #[instrument]
     pub async fn new_access_token(
         &self,
         driver: &Database,
@@ -356,6 +364,7 @@ impl OAuth2Client {
         })
     }
 
+    #[instrument]
     pub async fn new_token_pair(
         &self,
         driver: &Database,
@@ -414,6 +423,7 @@ impl OAuth2Client {
         ))
     }
 
+    #[instrument]
     pub async fn refresh_access_token(
         &self,
         driver: &Database,
@@ -444,6 +454,7 @@ impl OAuth2Client {
 }
 
 impl AccessToken {
+    #[instrument]
     pub async fn get_by_token(driver: &Database, token: &str) -> Result<Option<Self>> {
         Ok(
             sqlx::query_as("SELECT * FROM oauth2_access_tokens WHERE token = ?")
@@ -453,6 +464,7 @@ impl AccessToken {
         )
     }
 
+    #[instrument]
     pub async fn get_with_validation(
         driver: &Database,
         token: &str,
@@ -473,6 +485,7 @@ impl AccessToken {
         )
     }
 
+    #[instrument]
     pub fn scopes(&self) -> HashSet<String> {
         self.scopes
             .as_ref()
@@ -482,6 +495,7 @@ impl AccessToken {
 }
 
 impl RefreshToken {
+    #[instrument]
     pub async fn get_by_token(driver: &Database, token: &str) -> Result<Option<RefreshToken>> {
         Ok(
             sqlx::query_as("SELECT * FROM oauth2_refresh_tokens WHERE token = ?")
@@ -493,6 +507,7 @@ impl RefreshToken {
 }
 
 impl OAuth2PendingAuthorization {
+    #[instrument]
     pub async fn get_by_id(
         driver: &Database,
         id: &str,
@@ -506,6 +521,7 @@ impl OAuth2PendingAuthorization {
         )
     }
 
+    #[instrument]
     pub async fn set_user_id(
         self,
         driver: &Database,
@@ -525,17 +541,15 @@ impl OAuth2PendingAuthorization {
             .await?;
 
         let new_self = match self {
-            Self::Unauthorized(v) => {
-                Self::Authorized(OAuth2PendingAuthorizationAuthorized {
-                    id: v.id,
-                    client_id: v.client_id,
-                    user_id: user_id.to_string(),
-                    state: v.state,
-                    scopes: v.scopes,
-                    ty: v.ty,
-                    nonce: v.nonce,
-                })
-            }
+            Self::Unauthorized(v) => Self::Authorized(OAuth2PendingAuthorizationAuthorized {
+                id: v.id,
+                client_id: v.client_id,
+                user_id: user_id.to_string(),
+                state: v.state,
+                scopes: v.scopes,
+                ty: v.ty,
+                nonce: v.nonce,
+            }),
             Self::Authorized(_) => unreachable!(),
         };
 
@@ -544,6 +558,7 @@ impl OAuth2PendingAuthorization {
 }
 
 impl OAuth2AuthorizationCode {
+    #[instrument]
     pub async fn get_by_code(driver: &Database, code: &str) -> Result<Option<Self>> {
         Ok(
             sqlx::query_as("SELECT * FROM oauth2_authorization_codes WHERE code = ?")
@@ -600,12 +615,12 @@ pub struct IdTokenClaims {
     azp: String,
 
     // We also have some custom claims, this is allowed by the JWT spec
-
     sub_email: String,
     sub_name: String,
     sub_is_admin: bool,
 }
 
+#[derive(Debug)]
 pub enum JwtSigningAlgorithm {
     RS256,
 }
@@ -618,6 +633,7 @@ pub enum IdTokenCreationError {
     Signing(String),
 }
 
+#[instrument]
 pub fn create_id_token(
     issuer: String,
     client: &OAuth2Client,

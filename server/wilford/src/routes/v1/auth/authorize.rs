@@ -13,7 +13,7 @@ use database::user::User;
 
 use crate::response_types::Redirect;
 use crate::routes::appdata::{WConfig, WDatabase};
-use crate::routes::error::{WebError, WebResult};
+use crate::routes::error::{WebErrorKind, WebResult};
 use crate::routes::oauth::{OAuth2AuthorizationResponse, OAuth2Error, OAuth2ErrorKind};
 use crate::routes::WOidcSigningKey;
 
@@ -33,11 +33,11 @@ pub async fn authorize(
     let pending_authorization =
         OAuth2PendingAuthorization::get_by_id(&database, &query.authorization)
             .await?
-            .ok_or(WebError::NotFound)?;
+            .ok_or(WebErrorKind::NotFound)?;
 
     let client = OAuth2Client::get_by_client_id(&database, &pending_authorization.client_id())
         .await?
-        .ok_or(WebError::NotFound)?;
+        .ok_or(WebErrorKind::NotFound)?;
 
     if !query.grant {
         return Ok(OAuth2AuthorizationResponse::Err(OAuth2Error::new(
@@ -54,9 +54,9 @@ pub async fn authorize(
                 .new_authorization_code(&database, pending_authorization)
                 .await
                 .map_err(|e| match e {
-                    OAuth2AuthorizationCodeCreationError::Sqlx(e) => WebError::Database(e),
+                    OAuth2AuthorizationCodeCreationError::Sqlx(e) => WebErrorKind::Database(e),
                     OAuth2AuthorizationCodeCreationError::Unauthorized => {
-                        WebError::InvalidInternalState
+                        WebErrorKind::InvalidInternalState
                     }
                 })?;
 
@@ -98,15 +98,16 @@ pub async fn authorize(
                         create_id_token(
                             config.oidc_issuer.clone(),
                             &client,
-                            &User::get_by_id(&database, &access_token.user_id).await?
-                                .ok_or(WebError::InternalServerError)?,
+                            &User::get_by_id(&database, &access_token.user_id)
+                                .await?
+                                .ok_or(WebErrorKind::InternalServerError)?,
                             &oidc_signing_key.0,
                             &access_token,
                             nonce,
                             JwtSigningAlgorithm::RS256,
                         )
                         .tap_err(|e| warn!("Failed to create ID token: {e}"))
-                        .map_err(|_| WebError::InternalServerError)?
+                        .map_err(|_| WebErrorKind::InternalServerError)?
                     ),
                     access_token,
                     state
@@ -129,8 +130,10 @@ async fn new_access_token(
         .new_access_token(&database, pending_authorization)
         .await
         .map_err(|e| match e {
-            OAuth2AuthorizationCodeCreationError::Sqlx(e) => WebError::Database(e),
-            OAuth2AuthorizationCodeCreationError::Unauthorized => WebError::InvalidInternalState,
+            OAuth2AuthorizationCodeCreationError::Sqlx(e) => WebErrorKind::Database(e),
+            OAuth2AuthorizationCodeCreationError::Unauthorized => {
+                WebErrorKind::InvalidInternalState
+            }
         })?)
 }
 

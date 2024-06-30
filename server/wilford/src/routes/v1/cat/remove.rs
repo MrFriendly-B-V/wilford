@@ -1,11 +1,13 @@
+use actix_web::web;
+use serde::Deserialize;
+
+use database::constant_access_tokens::ConstantAccessToken;
+
 use crate::response_types::Empty;
 use crate::routes::appdata::WDatabase;
 use crate::routes::auth::Auth;
-use crate::routes::error::{WebError, WebResult};
+use crate::routes::error::{WebErrorKind, WebResult};
 use crate::routes::v1::MANAGE_SCOPE;
-use actix_web::web;
-use database::constant_access_tokens::ConstantAccessToken;
-use serde::Deserialize;
 
 #[derive(Deserialize)]
 pub struct Request {
@@ -18,12 +20,12 @@ pub async fn remove(
     payload: web::Json<Request>,
 ) -> WebResult<Empty> {
     if !auth.has_scope(MANAGE_SCOPE) {
-        return Err(WebError::Forbidden);
+        return Err(WebErrorKind::Forbidden.into());
     }
 
     let cat = ConstantAccessToken::get_by_token(&database, &payload.token)
         .await?
-        .ok_or(WebError::NotFound)?;
+        .ok_or(WebErrorKind::NotFound)?;
     cat.revoke(&database).await?;
 
     Ok(Empty)

@@ -2,7 +2,7 @@ use base64::Engine;
 use espocrm_rs::{EspoApiClient, Method};
 use reqwest::{Result, StatusCode};
 use serde::Deserialize;
-use tracing::warn;
+use tracing::{instrument, Instrument, trace, warn, warn_span};
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -22,15 +22,19 @@ pub enum LoginStatus {
 }
 
 impl EspoUser {
+    #[instrument(skip(client))]
     pub async fn get_by_id(client: &EspoApiClient, id: &str) -> Result<Self> {
         Ok(client
             .request::<(), &str>(Method::Get, &format!("User/{id}"), None, None)
+            .instrument(warn_span!("user::by_id"))
             .await?
             .error_for_status()?
             .json()
+            .instrument(warn_span!("user::by_id::json"))
             .await?)
     }
 
+    #[instrument(skip_all)]
     pub async fn try_login(
         host: &str,
         username: &str,
@@ -51,7 +55,9 @@ impl EspoUser {
             request = request.header("Espo-Authorization-Code", totp);
         }
 
-        let result = request.send().await?;
+        let result = request.send()
+            .instrument(warn_span!("try_login::request"))
+            .await?;
 
         match result.status() {
             StatusCode::OK => {
@@ -67,7 +73,10 @@ impl EspoUser {
                     is_active: bool,
                 }
 
-                let payload: Response = result.json().await?;
+                trace!("Deserializing EspoCRM response");
+                let payload: Response = result.json()
+                    .instrument(warn_span!("deserialize"))
+                    .await?;
                 if payload.user.is_active {
                     Ok(LoginStatus::Ok(payload.user.id))
                 } else {
@@ -80,7 +89,10 @@ impl EspoUser {
                     message: String,
                 }
 
-                let payload: Response = result.json().await?;
+                trace!("Deserializing EspoCRM response");
+                let payload: Response = result.json()
+                    .instrument(warn_span!("deserialize"))
+                    .await?;
                 if payload.message.eq("enterTotpCode") {
                     Ok(LoginStatus::SecondStepRequired)
                 } else {

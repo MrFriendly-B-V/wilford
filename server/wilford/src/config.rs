@@ -9,6 +9,7 @@ struct EnvConfig {
     config_path: PathBuf,
 }
 
+/* ANCHOR: config */
 #[derive(Debug, Deserialize)]
 pub struct Config {
     pub http: HttpConfig,
@@ -47,6 +48,7 @@ pub struct DatabaseConfig {
 pub struct DefaultClientConfig {
     pub redirect_uri: String,
 }
+/* ANCHOR_END: config */
 
 impl EnvConfig {
     fn new() -> Result<Self> {

@@ -2,13 +2,22 @@ version: '3.2'
 services:
   oauth2_proxy:
     image: quay.io/oauth2-proxy/oauth2-proxy
+    volumes:
+      - "/usr/local/share/ca-certificates:/usr/local/share/ca-certificates:ro"
+      - "/etc/ssl/certs:/etc/ssl/certs:ro"
     environment:
       - "OAUTH2_PROXY_COOKIE_SECRET=VsZqXqHQzwdPUcEUDgNxmQvTRZ46DtlQr8q-HtomkL8="
-      - "OAUTH2_PROXY_CLIENT_ID=Vy1l9P2X7RFf4jHfo3OiLHtShllSZKDa"
-      - "OAUTH2_PROXY_CLIENT_SECRET=d4HtCZLeZvRvldGOxQd18l5a46hZEl6WWoocL2IbkfcozLH6"
-      - "OAUTH2_PROXY_OIDC_ISSUER_URL=http://localhost:2521"
-      - "OAUTH2_PROXY_REDIRECT_URL=http://127.0.0.1:4180/oauth2/callback"
+      - "OAUTH2_PROXY_COOKIE_SECURE=true"
+      - "OAUTH2_PROXY_COOKIE_DOMAIN=localhost"
+      - "OAUTH2_PROXY_CLIENT_ID=NuWrxroZbOuhBL2ufHx9zj0qKT6XXQRg"
+      - "OAUTH2_PROXY_CLIENT_SECRET=vwn0MqNbD9qAnvCbGns9sNtikWC7eTM2V7DIz85vcimtxm12"
+      - "OAUTH2_PROXY_OIDC_ISSUER_URL=https://localhost:8443"
+      - "OAUTH2_PROXY_REDIRECT_URL=https://localhost:8443/oauth2/callback"
       - "OAUTH2_PROXY_PROVIDER=oidc"
       - "OAUTH2_PROXY_EMAIL_DOMAINS=*"
-      - "OAUTH2_PROXY_OIDC_JWKS_URL=http://localhost:2521/.well-known/jwks.json"
+      - "OAUTH2_PROXY_OIDC_EMAIL_CLAIM=sub_email"
+      - "OAUTH2_PROXY_PROVIDER_DISPLAY_NAME=Koala"
+      - "OAUTH2_PROXY_CUSTOM_SIGN_IN_LOGO=-"
+      - "OAUTH2_PROXY_BANNER=<img src='https://public.svsticky.nl/logos/logo_outline_kleur.png'/>"
+      - "OAUTH2_PROXY_FOOTER=-"
     network_mode: "host"

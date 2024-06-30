@@ -1,10 +1,12 @@
+use actix_web::web;
+use serde::Serialize;
+
+use database::oauth2_client::OAuth2Client;
+
 use crate::routes::appdata::WDatabase;
 use crate::routes::auth::Auth;
-use crate::routes::error::{WebError, WebResult};
+use crate::routes::error::{WebErrorKind, WebResult};
 use crate::routes::v1::MANAGE_SCOPE;
-use actix_web::web;
-use database::oauth2_client::OAuth2Client;
-use serde::Serialize;
 
 #[derive(Serialize)]
 pub struct Response {
@@ -21,7 +23,7 @@ pub struct Client {
 
 pub async fn list(database: WDatabase, auth: Auth) -> WebResult<web::Json<Response>> {
     if !auth.has_scope(MANAGE_SCOPE) {
-        return Err(WebError::Forbidden);
+        return Err(WebErrorKind::Forbidden.into());
     }
 
     let clients = OAuth2Client::list(&database)

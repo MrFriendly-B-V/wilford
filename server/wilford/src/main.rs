@@ -10,6 +10,7 @@ use espocrm_rs::EspoApiClient;
 use noiseless_tracing_actix_web::NoiselessRootSpanBuilder;
 use tracing::info;
 use tracing_actix_web::TracingLogger;
+use tracing_error::ErrorLayer;
 use tracing_subscriber::fmt::layer;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
@@ -97,7 +98,19 @@ fn install_tracing() {
     }
 
     tracing_subscriber::registry()
-        .with(EnvFilter::from_default_env())
-        .with(layer().compact())
+        .with(EnvFilter::from_default_env()
+            .add_directive("rustls=WARN"
+                .parse()
+                .expect("Invalid tracing directive")
+            )
+            .add_directive("rustls=WARN"
+                .parse()
+                .expect("Invalid tracing directive")
+            )
+        )
+        .with(layer()
+            .pretty()
+        )
+        .with(ErrorLayer::default())
         .init();
 }
