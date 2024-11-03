@@ -52,7 +52,7 @@ const routes = [
 ]
 
 const router = createRouter({
-  history: createWebHistory('/wilford'),
+  history: createWebHistory(),
   routes,
 })
 

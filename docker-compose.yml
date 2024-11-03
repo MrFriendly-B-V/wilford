@@ -25,11 +25,14 @@ services:
       context: server
       dockerfile: Dockerfile
     ports:
-      - "2521:8080"
+      - "2521:2521"
     environment:
       - "CONFIG_PATH=/config.json"
+      - "RUST_LOG=DEBUG"
     volumes:
       - "./config.json:/config.json"
+      - "./test_oidc_key.pem:/test_oidc_key.pem"
+      - "./test_oidc_key.pem.pub:/test_oidc_key.pem.pub"
     depends_on:
       - "mariadb-wilford"
 
@@ -63,3 +66,11 @@ services:
       - "./tmp/espocrm:/var/www/html"
     depends_on:
       - mariadb-espocrm
+
+  nginx:
+    image: nginx
+    network_mode: "host"
+    volumes:
+      - "./localhost.pem:/etc/ssl/certs/ssl-cert-snakeoil.pem"
+      - "./localhost-key.pem:/etc/ssl/private/ssl-cert-snakeoil.key"
+      - "./nginx.conf:/etc/nginx/conf.d/default.conf:ro"

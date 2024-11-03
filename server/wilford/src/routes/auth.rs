@@ -1,6 +1,6 @@
 use crate::espo::user::EspoUser;
 use crate::routes::appdata::{WDatabase, WEspo};
-use crate::routes::error::{WebError, WebResult};
+use crate::routes::error::{WebError, WebErrorKind, WebResult};
 use actix_web::cookie::time::OffsetDateTime;
 use actix_web::dev::Payload;
 use actix_web::{FromRequest, HttpRequest};
@@ -39,17 +39,17 @@ impl FromRequest for Auth {
             let token_info = match AccessToken::get_by_token(&database, &token).await? {
                 Some(v) => {
                     if v.expires_at < OffsetDateTime::now_utc().unix_timestamp() {
-                        return Err(WebError::Unauthorized);
+                        return Err(WebErrorKind::Unauthorized.into());
                     } else {
                         v
                     }
                 }
-                None => return Err(WebError::Unauthorized),
+                None => return Err(WebErrorKind::Unauthorized.into()),
             };
 
-            let espo_user = EspoUser::get_by_id(&espo_client, &token_info.espo_user_id)
+            let espo_user = EspoUser::get_by_id(&espo_client, &token_info.user_id)
                 .await
-                .map_err(|e| WebError::Espo(e))?;
+                .map_err(|e| WebErrorKind::Espo(e))?;
 
             Ok(Self {
                 espo_user_id: espo_user.id,
@@ -94,7 +94,7 @@ impl FromRequest for ConstantAccessTokenAuth {
             let token = get_authorization_token(&req)?;
             let cat = ConstantAccessToken::get_by_token(&database, &token)
                 .await?
-                .ok_or(WebError::Unauthorized)?;
+                .ok_or(WebErrorKind::Unauthorized)?;
 
             Ok(Self {
                 name: cat.name,
@@ -122,5 +122,5 @@ fn get_authorization_token(req: &HttpRequest) -> WebResult<String> {
         _ => {}
     }
 
-    Err(WebError::Unauthorized)
+    Err(WebErrorKind::Unauthorized.into())
 }

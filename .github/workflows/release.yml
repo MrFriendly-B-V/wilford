@@ -1,0 +1,48 @@
+name: Release 
+
+on:
+  push:
+    tags:
+    - '*'
+
+env:
+  CARGO_TERM_COLOR: always
+  DOCK_REG: registry.mrfriendly.uk
+
+jobs:
+  server:
+    name: Server build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - run: make build-server
+    - run: docker tag $DOCK_REG/wilford-server:latest $DOCK_REG/wilford-server:${{ github.ref_name }}
+    - run: docker push $DOCK_REG/wilford-server:latest
+    - run: docker push $DOCK_REG/wilford-server:${{ github.ref_name }}
+
+  ui:
+    name: UI build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '21'
+    - run: (cd ui; yarn install)
+    
+    - run: make build-ui
+    - run: docker tag $DOCK_REG/wilford-ui:latest $DOCK_REG/wilford-ui:${{ github.ref_name }}
+    - run: docker push $DOCK_REG/wilford-ui:latest
+    - run: docker push $DOCK_REG/wilford-ui:${{ github.ref_name }}
+  
+  docs:
+    name: Docs build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - run: cargo install mdbook --locked
+
+    - run: make build-docs
+    - run: docker tag $DOCK_REG/wilford-docs:latest $DOCK_REG/wilford-docs:${{ github.ref_name }}
+    - run: docker push $DOCK_REG/wilford-docs:latest
+    - run: docker push $DOCK_REG/wilford-docs:${{ github.ref_name }}

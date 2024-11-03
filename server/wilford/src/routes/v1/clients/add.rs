@@ -1,11 +1,13 @@
+use actix_web::web;
+use serde::Deserialize;
+
+use database::oauth2_client::OAuth2Client;
+
+use crate::response_types::Empty;
 use crate::routes::appdata::WDatabase;
 use crate::routes::auth::Auth;
-use crate::routes::empty::Empty;
-use crate::routes::error::{WebError, WebResult};
+use crate::routes::error::{WebErrorKind, WebResult};
 use crate::routes::v1::MANAGE_SCOPE;
-use actix_web::web;
-use database::oauth2_client::OAuth2Client;
-use serde::Deserialize;
 
 #[derive(Deserialize)]
 pub struct Request {
@@ -15,11 +17,11 @@ pub struct Request {
 
 pub async fn add(database: WDatabase, auth: Auth, payload: web::Json<Request>) -> WebResult<Empty> {
     if !auth.has_scope(MANAGE_SCOPE) {
-        return Err(WebError::Forbidden);
+        return Err(WebErrorKind::Forbidden.into());
     }
 
     if payload.name.len() > 64 {
-        return Err(WebError::BadRequest);
+        return Err(WebErrorKind::BadRequest.into());
     }
 
     let exists = OAuth2Client::list(&database)
@@ -29,7 +31,7 @@ pub async fn add(database: WDatabase, auth: Auth, payload: web::Json<Request>) -
         .is_some();
 
     if exists {
-        return Err(WebError::BadRequest);
+        return Err(WebErrorKind::BadRequest.into());
     }
 
     OAuth2Client::new(

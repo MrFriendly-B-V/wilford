@@ -1,8 +1,10 @@
-use crate::routes::appdata::WDatabase;
-use crate::routes::error::{WebError, WebResult};
 use actix_web::web;
-use database::oauth2_client::OAuth2Client;
 use serde::Serialize;
+
+use database::oauth2_client::OAuth2Client;
+
+use crate::routes::appdata::WDatabase;
+use crate::routes::error::{WebErrorKind, WebResult};
 
 #[derive(Serialize)]
 pub struct Response {
@@ -17,7 +19,7 @@ pub async fn internal(database: WDatabase) -> WebResult<web::Json<Response>> {
         .await?
         .into_iter()
         .find(|c| c.is_internal)
-        .ok_or(WebError::InvalidInternalState)?;
+        .ok_or(WebErrorKind::InvalidInternalState)?;
 
     Ok(web::Json(Response {
         name: client.name,

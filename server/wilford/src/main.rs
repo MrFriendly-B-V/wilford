@@ -1,4 +1,5 @@
 use crate::config::{get_config, DefaultClientConfig};
+use crate::routes::{OidcPublicKey, OidcSigningKey, WOidcPublicKey, WOidcSigningKey};
 use actix_cors::Cors;
 use actix_route_config::Routable;
 use actix_web::{web, App, HttpServer};
@@ -8,7 +9,8 @@ use database::oauth2_client::OAuth2Client;
 use espocrm_rs::EspoApiClient;
 use noiseless_tracing_actix_web::NoiselessRootSpanBuilder;
 use tracing::info;
-use tracing_actix_web::{RootSpanBuilder, TracingLogger};
+use tracing_actix_web::TracingLogger;
+use tracing_error::ErrorLayer;
 use tracing_subscriber::fmt::layer;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
@@ -16,6 +18,7 @@ use tracing_subscriber::EnvFilter;
 
 mod config;
 mod espo;
+mod response_types;
 mod routes;
 
 #[tokio::main]
@@ -24,6 +27,7 @@ async fn main() -> Result<()> {
     install_tracing();
 
     let config = get_config().await?;
+
     let database = Database::new(
         &config.database.user,
         &config.database.password,
@@ -39,8 +43,12 @@ async fn main() -> Result<()> {
     ensure_internal_oauth_client_exists(&database, &config.default_client).await?;
 
     let w_database = web::Data::new(database);
-    let w_config = web::Data::new(config);
     let w_espo = web::Data::new(espo_client);
+    let w_oidc_signing_key =
+        WOidcSigningKey::new(OidcSigningKey(config.read_oidc_signing_key().await?));
+    let w_oidc_public_key =
+        WOidcPublicKey::new(OidcPublicKey(config.read_oidc_public_key().await?));
+    let w_config = web::Data::new(config);
 
     HttpServer::new(move || {
         App::new()
@@ -49,9 +57,11 @@ async fn main() -> Result<()> {
             .app_data(w_database.clone())
             .app_data(w_config.clone())
             .app_data(w_espo.clone())
+            .app_data(w_oidc_signing_key.clone())
+            .app_data(w_oidc_public_key.clone())
             .configure(routes::Router::configure)
     })
-    .bind("0.0.0.0:8080")?
+    .bind("0.0.0.0:2521")?
     .run()
     .await?;
 
@@ -88,7 +98,12 @@ fn install_tracing() {
     }
 
     tracing_subscriber::registry()
-        .with(EnvFilter::from_default_env())
-        .with(layer().compact())
+        .with(
+            EnvFilter::from_default_env()
+                .add_directive("rustls=WARN".parse().expect("Invalid tracing directive"))
+                .add_directive("rustls=WARN".parse().expect("Invalid tracing directive")),
+        )
+        .with(layer().pretty())
+        .with(ErrorLayer::default())
         .init();
 }

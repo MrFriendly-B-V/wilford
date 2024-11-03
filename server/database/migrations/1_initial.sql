@@ -12,8 +12,9 @@ CREATE TABLE oauth2_pending_authorizations (
     client_id VARCHAR(32) NOT NULL,
     scopes TEXT DEFAULT NULL,
     state TEXT DEFAULT NULL,
-    espo_user_id TEXT DEFAULT NULL,
+    user_id TEXT DEFAULT NULL,
     ty TEXT NOT NULL,
+    nonce TEXT DEFAULT NULL,
     PRIMARY KEY (id)
 );
 
@@ -22,7 +23,7 @@ CREATE TABLE oauth2_access_tokens (
     client_id VARCHAR(32) NOT NULL,
     expires_at BIGINT NOT NULL,
     issued_at BIGINT NOT NULL,
-    espo_user_id VARCHAR(64) NOT NULL,
+    user_id VARCHAR(64) NOT NULL,
     scopes TEXT DEFAULT NULL,
     PRIMARY KEY (token)
 );
@@ -30,7 +31,7 @@ CREATE TABLE oauth2_access_tokens (
 CREATE TABLE oauth2_refresh_tokens (
     token VARCHAR(32) NOT NULL,
     client_id VARCHAR(32) NOT NULL,
-    espo_user_id VARCHAR(64) NOT NULL,
+    user_id VARCHAR(64) NOT NULL,
     scopes TEXT DEFAULT NULL,
     PRIMARY KEY (token)
 );
@@ -40,21 +41,23 @@ CREATE TABLE oauth2_authorization_codes (
     code VARCHAR(32) NOT NULL,
     expires_at BIGINT NOT NULL,
     scopes TEXT DEFAULT NULL,
-    espo_user_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    nonce TEXT DEFAULT NULL,
     PRIMARY KEY (code)
 );
 
 CREATE TABLE users (
-    espo_user_id VARCHAR(64) NOT NULL,
+    user_id VARCHAR(64) NOT NULL,
     name TEXT NOT NULL,
-    is_espo_admin BOOL,
-    PRIMARY KEY (espo_user_id)
+    email TEXT NOT NULL,
+    is_admin BOOL,
+    PRIMARY KEY (user_id)
 );
 
 CREATE TABLE user_permitted_scopes (
-    espo_user_id VARCHAR(64) NOT NULL,
+    user_id VARCHAR(64) NOT NULL,
     scope VARCHAR(64) NOT NULL,
-    PRIMARY KEY (espo_user_id, scope)
+    PRIMARY KEY (user_id, scope)
 );
 
 CREATE TABLE constant_access_tokens (

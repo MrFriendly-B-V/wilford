@@ -1,2 +1,2 @@
 # User
-User info & user managment
+User info & user management

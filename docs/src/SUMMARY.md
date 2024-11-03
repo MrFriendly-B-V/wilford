@@ -1,5 +1,8 @@
 # Summary
 - [Introduction](introduction.md)
+- [Deploying](./deploy/index.md)
+  - [Configuration](./deploy/configuration.md)
+  - [OAuth2 Proxy](./deploy/oauth2_proxy.md)
 - [OAuth2](oauth2/index.md)
     - [Authorization](oauth2/authorization.md)
 - [API](api/index.md)
