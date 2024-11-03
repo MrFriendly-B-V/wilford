@@ -1,7 +1,9 @@
-use crate::espo::user::{EspoUser, LoginStatus};
-use crate::routes::appdata::{WConfig, WDatabase, WEspo};
-use crate::routes::error::{WebErrorKind, WebResult};
+use crate::authorization_backends::{AuthorizationBackend, CheckResult};
+use crate::routes::appdata::WDatabase;
+use crate::routes::error::{WebError, WebErrorKind, WebResult};
+use crate::routes::WAuthorizationProvider;
 use actix_web::web;
+use database::driver::Database;
 use database::oauth2_client::OAuth2PendingAuthorization;
 use database::user::User;
 use serde::{Deserialize, Serialize};
@@ -10,94 +12,81 @@ use tracing::instrument;
 
 #[derive(Debug, Deserialize)]
 pub struct Request {
+    /// The identifier for the pending authorization
     authorization: String,
+    /// The login username
     username: String,
+    /// The login password
     password: String,
+    /// If required, the TOTP code
     totp_code: Option<String>,
 }
 
 #[derive(Serialize)]
 pub struct Response {
+    /// The result of the login request. `true` indicates the login was successful.
+    /// `false` indicates the credentials provided are invalid, or further action is needed.
     status: bool,
+    /// Whether 2FA is required.
     totp_required: bool,
 }
 
 #[instrument(skip_all)]
 pub async fn login(
     database: WDatabase,
-    config: WConfig,
-    espo: WEspo,
     payload: web::Json<Request>,
+    authorization_provider: WAuthorizationProvider,
 ) -> WebResult<web::Json<Response>> {
     let authorization = OAuth2PendingAuthorization::get_by_id(&database, &payload.authorization)
         .await?
         .ok_or(WebErrorKind::NotFound)?;
 
-    let login = EspoUser::try_login(
-        &config.espo.host,
-        &payload.username,
-        &payload.password,
-        payload.totp_code.as_deref(),
-    )
-    .await
-    .map_err(|e| WebErrorKind::Espo(e))?;
+    // Validate the provided login credentials
+    let login_check = authorization_provider
+        .check_credentials(
+            &payload.username,
+            &payload.password,
+            payload.totp_code.as_deref(),
+        )
+        .await
+        .map_err(|e| WebError::new(WebErrorKind::AuthorizationProvider(e)))?;
 
-    // OAuth2 defines `scope` to be all scopes, seperated by a ' ' (space char)
-    // Where duplicates can be ignored.
-    let scope_set = authorization
-        .scopes()
-        .clone()
-        .map(|s| s.split(" ").map(|c| c.to_string()).collect::<HashSet<_>>())
-        .unwrap_or_default();
-
-    match login {
-        LoginStatus::Ok(id) => {
+    match login_check {
+        CheckResult::Ok(user) => {
             // Create a user if it doesn't exist
             // If it does, check if all scopes are allowed.
-            // Only exceptions to this are Espo admins, they may have all scopes,
-            // and the OIDC scopes
-            match User::get_by_id(&database, &id).await? {
+            // Only exceptions to this:
+            // - admins, they may have all scopes,
+            // - oidc scopes, they are always allowed.
+            match User::get_by_id(&database, &user.id).await? {
                 Some(user) if user.is_admin => {}
                 Some(user) => {
-                    let permitted_scopes =
-                        HashSet::from_iter(user.list_permitted_scopes(&database).await?);
+                    // We check that the scopes requested in this authorization flow are actually
+                    // allowed to be granted to the requesting user by the administrator.
 
-                    let oidc_scopes = oidc_scopes();
-                    let allowed_scopes = permitted_scopes
-                        .union(&oidc_scopes)
-                        .map(|c| c.to_string())
-                        .collect::<HashSet<_>>();
+                    let requested_scopes = requested_scope_set(&authorization);
+                    let permitted_scopes = user_permitted_scopes(&user, &database).await?;
 
-                    let disallowed_scopes = scope_set
-                        .difference(&allowed_scopes)
-                        .collect::<HashSet<_>>();
-
-                    if !disallowed_scopes.is_empty() {
+                    if !scope_request_permitted(&permitted_scopes, &requested_scopes) {
                         return Err(WebErrorKind::Forbidden.into());
                     }
                 }
                 None => {
-                    let espo_user = EspoUser::get_by_id(&espo, &id)
-                        .await
-                        .map_err(|e| WebErrorKind::Espo(e))?;
-
                     let user = User::new(
                         &database,
-                        id.clone(),
-                        espo_user.name,
-                        espo_user.email_address,
-                        espo_user.user_type.eq("admin"),
+                        user.id.clone(),
+                        user.name,
+                        user.email,
+                        user.is_admin,
                     )
                     .await?;
 
                     // No permitted scopes are granted yet
                     if !user.is_admin {
-                        // Remove the OIDC scopes
-                        let oidc_scopes = oidc_scopes();
-                        let disallowed_scopes =
-                            scope_set.difference(&oidc_scopes).collect::<HashSet<_>>();
+                        let requested_scopes = requested_scope_set(&authorization);
+                        let permitted_scopes = user_permitted_scopes(&user, &database).await?;
 
-                        if !disallowed_scopes.is_empty() {
+                        if !scope_request_permitted(&permitted_scopes, &requested_scopes) {
                             return Err(WebErrorKind::Forbidden.into());
                         }
                     }
@@ -105,7 +94,7 @@ pub async fn login(
             }
 
             authorization
-                .set_user_id(&database, &id)
+                .set_user_id(&database, &user.id)
                 .await
                 .map_err(|_| WebErrorKind::BadRequest)?;
 
@@ -114,17 +103,57 @@ pub async fn login(
                 totp_required: false,
             }))
         }
-        LoginStatus::SecondStepRequired => Ok(web::Json(Response {
+        CheckResult::TwoFactorRequired => Ok(web::Json(Response {
             status: false,
             totp_required: true,
         })),
-        LoginStatus::Err => Ok(web::Json(Response {
+        CheckResult::Invalid => Ok(web::Json(Response {
             status: false,
             totp_required: false,
         })),
     }
 }
 
+/// Check if the requested scopes are contained in the set of permitted scopes. Returns `true`
+/// if this is the case.
+fn scope_request_permitted(permitted: &HashSet<String>, requested: &HashSet<String>) -> bool {
+    let disallowed_scopes = requested.difference(permitted).collect::<HashSet<_>>();
+
+    disallowed_scopes.is_empty()
+}
+
+/// Get the scopes the user has been granted by the administrator.
+/// This set also contains the OIDC scopes, which are always allowed.
+///
+/// # Errors
+///
+/// If a database error occurs while fetching the list of permitted scopes.
+async fn user_permitted_scopes(
+    user: &User,
+    database: &Database,
+) -> Result<HashSet<String>, database::driver::Error> {
+    let permitted_scopes = HashSet::from_iter(user.list_permitted_scopes(database).await?);
+
+    let oidc_scopes = oidc_scopes();
+    let allowed_scopes = permitted_scopes
+        .union(&oidc_scopes)
+        .map(|c| c.to_string())
+        .collect::<HashSet<_>>();
+
+    Ok(allowed_scopes)
+}
+
+/// Get the set of scopes rqeuested in the authorization request
+fn requested_scope_set(authorization: &OAuth2PendingAuthorization) -> HashSet<String> {
+    authorization
+        .scopes()
+        .clone()
+        .map(|s| s.split(" ").map(|c| c.to_string()).collect::<HashSet<_>>())
+        .unwrap_or_default()
+}
+
+/// The set of scopes which are always allowed.
+/// These are essential to the OIDC flow and should not be used for access control.
 fn oidc_scopes() -> HashSet<String> {
     HashSet::from_iter([
         "openid".to_string(),

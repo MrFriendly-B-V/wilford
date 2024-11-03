@@ -1,6 +1,7 @@
-use crate::espo::user::EspoUser;
-use crate::routes::appdata::{WDatabase, WEspo};
+use crate::authorization_backends::AuthorizationBackend;
+use crate::routes::appdata::WDatabase;
 use crate::routes::error::{WebError, WebErrorKind, WebResult};
+use crate::routes::WAuthorizationProvider;
 use actix_web::cookie::time::OffsetDateTime;
 use actix_web::dev::Payload;
 use actix_web::{FromRequest, HttpRequest};
@@ -12,7 +13,7 @@ use std::pin::Pin;
 
 #[derive(Debug, Clone)]
 pub struct Auth {
-    pub espo_user_id: String,
+    pub user_id: String,
     pub name: String,
     pub is_admin: bool,
     token: AccessToken,
@@ -28,9 +29,9 @@ impl FromRequest for Auth {
             .app_data::<WDatabase>()
             .expect("Getting AppData for type WDatabase")
             .clone();
-        let espo_client = req
-            .app_data::<WEspo>()
-            .expect("Getting AppData for type WEspo")
+        let auth_provider = req
+            .app_data::<WAuthorizationProvider>()
+            .expect("Getting AppData for type WAuthorizationProvider")
             .clone();
 
         Box::pin(async move {
@@ -47,14 +48,16 @@ impl FromRequest for Auth {
                 None => return Err(WebErrorKind::Unauthorized.into()),
             };
 
-            let espo_user = EspoUser::get_by_id(&espo_client, &token_info.user_id)
-                .await
-                .map_err(|e| WebErrorKind::Espo(e))?;
+            let stored_user = auth_provider.get_user(&token_info.user_id).await?;
+
+            if !stored_user.is_active {
+                return Err(WebErrorKind::Forbidden.into());
+            }
 
             Ok(Self {
-                espo_user_id: espo_user.id,
-                name: espo_user.name,
-                is_admin: espo_user.user_type.eq("admin"),
+                user_id: stored_user.id,
+                name: stored_user.name,
+                is_admin: stored_user.is_admin,
                 token: token_info,
             })
         })
@@ -75,7 +78,9 @@ impl Auth {
 /// Authentication using a constant token.
 /// These tokens are created manually.
 pub struct ConstantAccessTokenAuth {
+    #[allow(unused)]
     pub name: String,
+    #[allow(unused)]
     pub token: String,
 }
 

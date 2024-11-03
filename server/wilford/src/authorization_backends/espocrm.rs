@@ -1,12 +1,58 @@
+use crate::authorization_backends::{AuthorizationBackend, CheckResult, LoginUser};
 use base64::Engine;
 use espocrm_rs::{EspoApiClient, Method};
 use reqwest::{Result, StatusCode};
 use serde::Deserialize;
 use tracing::{instrument, trace, warn, warn_span, Instrument};
 
+pub struct EspoAuthorizationClient {
+    pub client: EspoApiClient,
+    pub host: String,
+}
+
+impl AuthorizationBackend for EspoAuthorizationClient {
+    type Error = reqwest::Error;
+
+    async fn check_credentials(
+        &self,
+        username: &str,
+        password: &str,
+        two_factor_code: Option<&str>,
+    ) -> std::result::Result<CheckResult, Self::Error> {
+        let login_status =
+            EspoUser::try_login(&self.host, username, password, two_factor_code).await?;
+
+        match login_status {
+            LoginStatus::Ok(id) => {
+                let espo_user = EspoUser::get_by_id(&self.client, &id).await?;
+                Ok(CheckResult::Ok(LoginUser {
+                    id: espo_user.id,
+                    email: espo_user.email_address,
+                    name: espo_user.name,
+                    is_admin: espo_user.user_type.eq("admin"),
+                    is_active: espo_user.is_active,
+                }))
+            }
+            LoginStatus::SecondStepRequired => Ok(CheckResult::TwoFactorRequired),
+            LoginStatus::Err => Ok(CheckResult::Invalid),
+        }
+    }
+
+    async fn get_user(&self, user_id: &str) -> std::result::Result<LoginUser, Self::Error> {
+        let user = EspoUser::get_by_id(&self.client, &user_id).await?;
+        Ok(LoginUser {
+            id: user.id,
+            email: user.email_address,
+            is_admin: user.user_type.eq("admin"),
+            is_active: user.is_active,
+            name: user.name,
+        })
+    }
+}
+
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct EspoUser {
+struct EspoUser {
     pub id: String,
     pub name: String,
     pub email_address: String,
@@ -15,7 +61,7 @@ pub struct EspoUser {
     pub user_type: String,
 }
 
-pub enum LoginStatus {
+enum LoginStatus {
     Ok(String),
     SecondStepRequired,
     Err,

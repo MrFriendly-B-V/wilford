@@ -19,6 +19,12 @@ pub struct Config {
     pub oidc_signing_key: PathBuf,
     pub oidc_public_key: PathBuf,
     pub oidc_issuer: String,
+    pub authorization_provider: AuthorizationProviderType,
+}
+
+#[derive(Debug, Deserialize)]
+pub enum AuthorizationProviderType {
+    Espocrm,
 }
 
 #[derive(Debug, Deserialize)]

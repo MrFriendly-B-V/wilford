@@ -1,5 +1,9 @@
-use crate::config::{get_config, DefaultClientConfig};
-use crate::routes::{OidcPublicKey, OidcSigningKey, WOidcPublicKey, WOidcSigningKey};
+use crate::authorization_backends::espocrm::EspoAuthorizationClient;
+use crate::authorization_backends::AuthorizationProvider;
+use crate::config::{get_config, AuthorizationProviderType, Config, DefaultClientConfig};
+use crate::routes::{
+    OidcPublicKey, OidcSigningKey, WAuthorizationProvider, WOidcPublicKey, WOidcSigningKey,
+};
 use actix_cors::Cors;
 use actix_route_config::Routable;
 use actix_web::{web, App, HttpServer};
@@ -16,8 +20,8 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::EnvFilter;
 
+mod authorization_backends;
 mod config;
-mod espo;
 mod response_types;
 mod routes;
 
@@ -35,15 +39,11 @@ async fn main() -> Result<()> {
         &config.database.database,
     )
     .await?;
-    let espo_client = EspoApiClient::new(&config.espo.host)
-        .set_api_key(&config.espo.api_key)
-        .set_secret_key(&config.espo.secret_key)
-        .build();
 
     ensure_internal_oauth_client_exists(&database, &config.default_client).await?;
 
+    let w_auth_provider = WAuthorizationProvider::new(init_auth_provider(&config));
     let w_database = web::Data::new(database);
-    let w_espo = web::Data::new(espo_client);
     let w_oidc_signing_key =
         WOidcSigningKey::new(OidcSigningKey(config.read_oidc_signing_key().await?));
     let w_oidc_public_key =
@@ -56,9 +56,9 @@ async fn main() -> Result<()> {
             .wrap(TracingLogger::<NoiselessRootSpanBuilder>::new())
             .app_data(w_database.clone())
             .app_data(w_config.clone())
-            .app_data(w_espo.clone())
             .app_data(w_oidc_signing_key.clone())
             .app_data(w_oidc_public_key.clone())
+            .app_data(w_auth_provider.clone())
             .configure(routes::Router::configure)
     })
     .bind("0.0.0.0:2521")?
@@ -66,6 +66,22 @@ async fn main() -> Result<()> {
     .await?;
 
     Ok(())
+}
+
+fn init_auth_provider(config: &Config) -> AuthorizationProvider {
+    match config.authorization_provider {
+        AuthorizationProviderType::Espocrm => {
+            let espo_client = EspoApiClient::new(&config.espo.host)
+                .set_api_key(&config.espo.api_key)
+                .set_secret_key(&config.espo.secret_key)
+                .build();
+
+            AuthorizationProvider::Espocrm(EspoAuthorizationClient {
+                host: config.espo.host.clone(),
+                client: espo_client,
+            })
+        }
+    }
 }
 
 async fn ensure_internal_oauth_client_exists(
