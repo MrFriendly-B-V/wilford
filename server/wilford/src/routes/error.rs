@@ -1,7 +1,7 @@
-use std::fmt;
-use std::fmt::{Formatter, Write};
 use actix_web::http::StatusCode;
 use actix_web::ResponseError;
+use std::fmt;
+use std::fmt::{Formatter, Write};
 use thiserror::Error;
 use tracing_error::SpanTrace;
 

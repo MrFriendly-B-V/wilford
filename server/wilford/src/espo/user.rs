@@ -2,7 +2,7 @@ use base64::Engine;
 use espocrm_rs::{EspoApiClient, Method};
 use reqwest::{Result, StatusCode};
 use serde::Deserialize;
-use tracing::{instrument, Instrument, trace, warn, warn_span};
+use tracing::{instrument, trace, warn, warn_span, Instrument};
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -55,7 +55,8 @@ impl EspoUser {
             request = request.header("Espo-Authorization-Code", totp);
         }
 
-        let result = request.send()
+        let result = request
+            .send()
             .instrument(warn_span!("try_login::request"))
             .await?;
 
@@ -74,9 +75,7 @@ impl EspoUser {
                 }
 
                 trace!("Deserializing EspoCRM response");
-                let payload: Response = result.json()
-                    .instrument(warn_span!("deserialize"))
-                    .await?;
+                let payload: Response = result.json().instrument(warn_span!("deserialize")).await?;
                 if payload.user.is_active {
                     Ok(LoginStatus::Ok(payload.user.id))
                 } else {
@@ -90,9 +89,7 @@ impl EspoUser {
                 }
 
                 trace!("Deserializing EspoCRM response");
-                let payload: Response = result.json()
-                    .instrument(warn_span!("deserialize"))
-                    .await?;
+                let payload: Response = result.json().instrument(warn_span!("deserialize")).await?;
                 if payload.message.eq("enterTotpCode") {
                     Ok(LoginStatus::SecondStepRequired)
                 } else {

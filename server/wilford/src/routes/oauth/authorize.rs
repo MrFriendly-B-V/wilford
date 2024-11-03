@@ -79,7 +79,7 @@ pub async fn authorize(
             &database,
             query.scope.clone(),
             query.state.clone(),
-            rt_to_at(&query.response_type),
+            response_to_authorization_type(&query.response_type),
             query.nonce.clone(),
         )
         .await;
@@ -104,7 +104,7 @@ pub async fn authorize(
     ))))
 }
 
-fn rt_to_at(rt: &ResponseType) -> AuthorizationType {
+fn response_to_authorization_type(rt: &ResponseType) -> AuthorizationType {
     match rt {
         ResponseType::Code => AuthorizationType::AuthorizationCode,
         ResponseType::Token => AuthorizationType::Implicit,

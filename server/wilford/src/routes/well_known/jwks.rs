@@ -1,9 +1,9 @@
 use actix_web::web;
-use base64::Engine;
 use base64::prelude::BASE64_URL_SAFE_NO_PAD;
-use rsa::{BigUint, RsaPublicKey};
+use base64::Engine;
 use rsa::pkcs8::DecodePublicKey;
 use rsa::traits::PublicKeyParts;
+use rsa::{BigUint, RsaPublicKey};
 use serde::{Serialize, Serializer};
 
 use crate::routes::appdata::WOidcPublicKey;
@@ -37,12 +37,10 @@ pub async fn jwks(oidc_public_key: WOidcPublicKey) -> WebResult<web::Json<Jwks>>
             r#use: "sig".to_string(),
             alg: "RS256".to_string(),
             kid: "rsa".to_string(), // We dont have a kid
-            key_ops: vec![
-                "verify".to_string(),
-            ],
+            key_ops: vec!["verify".to_string()],
             // k: (**oidc_public_key).0.clone(),
             n: public_key.n().clone(),
-            e: public_key.e().clone()
+            e: public_key.e().clone(),
         }],
     }))
 }
