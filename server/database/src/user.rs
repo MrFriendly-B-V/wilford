@@ -1,5 +1,6 @@
 use crate::driver::Database;
 use sqlx::{FromRow, Result};
+use std::fmt::Debug;
 use tracing::instrument;
 
 #[derive(Debug, FromRow)]
@@ -44,6 +45,14 @@ impl User {
     }
 
     #[instrument]
+    pub async fn get_by_email(driver: &Database, email: &str) -> Result<Option<Self>> {
+        Ok(sqlx::query_as("SELECT * FROM users WHERE email = ?")
+            .bind(email)
+            .fetch_optional(&**driver)
+            .await?)
+    }
+
+    #[instrument]
     pub async fn list(driver: &Database) -> Result<Vec<Self>> {
         Ok(sqlx::query_as("SELECT * FROM users")
             .fetch_all(&**driver)
@@ -80,5 +89,38 @@ impl User {
             .await?;
 
         Ok(())
+    }
+
+    #[instrument(skip(password))]
+    pub async fn set_password_hash<P: AsRef<str> + Debug>(
+        &self,
+        driver: &Database,
+        password: P,
+    ) -> Result<()> {
+        if self.get_password_hash(&driver).await?.is_some() {
+            sqlx::query("UPDATE user_credentials SET password_hash = ? WHERE user_id = ?")
+                .bind(password.as_ref())
+                .bind(&self.user_id)
+                .execute(&**driver)
+                .await?;
+        } else {
+            sqlx::query("INSERT INTO user_credentials (user_id, password_hash) VALUES (?, ?)")
+                .bind(password.as_ref())
+                .bind(&self.user_id)
+                .execute(&**driver)
+                .await?;
+        }
+
+        Ok(())
+    }
+
+    #[instrument]
+    pub async fn get_password_hash(&self, driver: &Database) -> Result<Option<String>> {
+        Ok(
+            sqlx::query_scalar("SELECT password_hash FROM user_credentials WHERE user_id = ?")
+                .bind(&self.user_id)
+                .fetch_optional(&**driver)
+                .await?,
+        )
     }
 }
