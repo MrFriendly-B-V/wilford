@@ -6,46 +6,75 @@ use tokio::io::AsyncReadExt;
 
 #[derive(Debug, Deserialize)]
 struct EnvConfig {
+    /// The path to the JSON configuration file.
     config_path: PathBuf,
 }
 
 /* ANCHOR: config */
 #[derive(Debug, Deserialize)]
 pub struct Config {
+    /// Configuration for the basic functioning of the system
     pub http: HttpConfig,
+    /// Database configuration
     pub database: DatabaseConfig,
+    /// EspoCRM configuration
     pub espo: EspoConfig,
+    /// Options for the default OAuth2 client.
+    /// This client is used by Wilford itself.
     pub default_client: DefaultClientConfig,
+    /// The path to the private key used to sign OIDC ID tokens.
+    /// Should be the matching private key of [oidc_public_key]
     pub oidc_signing_key: PathBuf,
+    /// The path to the public key used to sign OIDC ID tokens.
+    /// Should be the matching public key of [oidc_signing_key]
     pub oidc_public_key: PathBuf,
+    /// The issuer of OpenID Connect ID tokens.
+    /// E.g. `mrfriendly.nl`.
     pub oidc_issuer: String,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct HttpConfig {
+    /// The URL at which the frontend's login page can be found.
     pub ui_login_path: String,
+    /// The URL at which the OAuth2 authorization endpoint can be found.
+    /// Should point to the route `/oauth/authorize`.
     pub authorization_endpoint: String,
+    /// The URL at which the OAuth2 token endpoint can be found.
+    /// Should point to the route `/oauth/token`.
     pub token_endpoint: String,
+    /// The URL at which the JWKS document can be found.
+    /// Should point to the route `/.well-known/jwks.json`.
     pub jwks_uri_endpoint: String,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct EspoConfig {
+    /// The base URI at which EspoCRM can be found.
+    /// Should not end with a slash character.
     pub host: String,
+    /// The API key of the EspoCRM API client.
     pub api_key: String,
+    /// The secret key of the EspoCRM API client.
     pub secret_key: String,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct DatabaseConfig {
+    /// The MySQL username.
     pub user: String,
+    /// The MySQL password.
     pub password: String,
+    /// The address at which the MySQL database can be reacher.
     pub host: String,
+    /// The MySQL database name.
     pub database: String,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct DefaultClientConfig {
+    /// The redict URI for the default OAuth2 client used by Wilford itself.
+    /// Should be the location at which the frontend's `login-ok` page can be found.
     pub redirect_uri: String,
 }
 /* ANCHOR_END: config */
