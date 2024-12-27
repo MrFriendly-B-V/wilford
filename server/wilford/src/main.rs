@@ -6,7 +6,6 @@ use actix_web::{web, App, HttpServer};
 use color_eyre::Result;
 use database::driver::Database;
 use database::oauth2_client::OAuth2Client;
-use espocrm_rs::EspoApiClient;
 use noiseless_tracing_actix_web::NoiselessRootSpanBuilder;
 use tracing::info;
 use tracing_actix_web::TracingLogger;
@@ -36,15 +35,10 @@ async fn main() -> Result<()> {
         &config.database.database,
     )
     .await?;
-    let espo_client = EspoApiClient::new(&config.espo.host)
-        .set_api_key(&config.espo.api_key)
-        .set_secret_key(&config.espo.secret_key)
-        .build();
 
     ensure_internal_oauth_client_exists(&database, &config.default_client).await?;
 
     let w_database = web::Data::new(database);
-    let w_espo = web::Data::new(espo_client);
     let w_oidc_signing_key =
         WOidcSigningKey::new(OidcSigningKey(config.read_oidc_signing_key().await?));
     let w_oidc_public_key =
@@ -57,7 +51,6 @@ async fn main() -> Result<()> {
             .wrap(TracingLogger::<NoiselessRootSpanBuilder>::new())
             .app_data(w_database.clone())
             .app_data(w_config.clone())
-            .app_data(w_espo.clone())
             .app_data(w_oidc_signing_key.clone())
             .app_data(w_oidc_public_key.clone())
             .configure(routes::Router::configure)

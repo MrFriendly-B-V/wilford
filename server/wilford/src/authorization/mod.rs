@@ -1,4 +1,6 @@
-mod local_provider;
+pub mod combined;
+pub mod espo;
+pub mod local_provider;
 
 use std::error::Error;
 use std::fmt::Debug;
@@ -12,6 +14,8 @@ pub enum AuthorizationError<E: Error + Debug> {
     TotpNeeded,
     #[error("Unsupported operation")]
     UnsupportedOperation,
+    #[error("Already exists")]
+    AlreadyExists,
     #[error(transparent)]
     Other(#[from] E),
 }
@@ -65,4 +69,22 @@ pub trait AuthorizationProvider {
         user_id: &str,
         new_password: &str,
     ) -> Result<(), AuthorizationError<Self::Error>>;
+
+    /// Whether the authorization provider supports registering new users.
+    fn supports_registration(&self) -> bool;
+
+    /// Register a new user with the authorization provider.
+    /// Implementations do not have to support this operation, check this with [Self::supports_registration].
+    ///
+    /// # Errors
+    /// - If the operation is not supports
+    /// - If the underlying operation fails
+    /// - If a user with the given e-mail address already exists
+    async fn register_user(
+        &self,
+        name: &str,
+        email: &str,
+        password: &str,
+        is_admin: bool,
+    ) -> Result<UserInformation, AuthorizationError<Self::Error>>;
 }

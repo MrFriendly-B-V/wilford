@@ -91,6 +91,26 @@ impl User {
         Ok(())
     }
 
+    pub async fn set_is_admin(&self, driver: &Database, is_admin: bool) -> Result<()> {
+        sqlx::query("UPDATE users SET is_admin = ? WHERE user_id = ?")
+            .bind(is_admin)
+            .bind(&self.user_id)
+            .execute(&**driver)
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn set_name(&self, driver: &Database, name: &str) -> Result<()> {
+        sqlx::query("UPDATE users SET name = ? WHERE user_id = ?")
+            .bind(name)
+            .bind(&self.user_id)
+            .execute(&**driver)
+            .await?;
+
+        Ok(())
+    }
+
     #[instrument(skip(password))]
     pub async fn set_password_hash<P: AsRef<str> + Debug>(
         &self,

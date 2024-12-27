@@ -12,7 +12,7 @@ pub struct Response {
 pub async fn info(auth: Auth) -> web::Json<Response> {
     web::Json(Response {
         name: auth.name,
-        espo_user_id: auth.espo_user_id,
+        espo_user_id: auth.user_id,
         is_admin: auth.is_admin,
     })
 }

@@ -2977,6 +2977,7 @@ dependencies = [
  "espocrm-rs",
  "noiseless-tracing-actix-web",
  "pem",
+ "rand",
  "reqwest",
  "rsa",
  "serde",

@@ -17,8 +17,11 @@ pub struct Config {
     pub http: HttpConfig,
     /// Database configuration
     pub database: DatabaseConfig,
-    /// EspoCRM configuration
-    pub espo: EspoConfig,
+    /// The authorization provider to use
+    pub authorization_provider: AuthorizationProviderType,
+    /// EspoCRM configuration.
+    /// Required if `authorization_provider` is set to `EspoCrm`
+    pub espo: Option<EspoConfig>,
     /// Options for the default OAuth2 client.
     /// This client is used by Wilford itself.
     pub default_client: DefaultClientConfig,
@@ -31,6 +34,15 @@ pub struct Config {
     /// The issuer of OpenID Connect ID tokens.
     /// E.g. `mrfriendly.nl`.
     pub oidc_issuer: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub enum AuthorizationProviderType {
+    /// Use the local database as authorization provider.
+    Local,
+    /// Use EspoCRM as authorization provider.
+    /// Requires further configuration.
+    EspoCrm,
 }
 
 #[derive(Debug, Deserialize)]
