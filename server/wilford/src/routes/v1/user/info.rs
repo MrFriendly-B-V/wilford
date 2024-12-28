@@ -9,6 +9,7 @@ pub struct Response {
     espo_user_id: String,
 }
 
+/// Get information about the user
 pub async fn info(auth: Auth) -> web::Json<Response> {
     web::Json(Response {
         name: auth.name,

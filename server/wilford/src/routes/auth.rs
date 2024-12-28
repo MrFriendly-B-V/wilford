@@ -15,6 +15,7 @@ pub struct Auth {
     pub user_id: String,
     pub name: String,
     pub is_admin: bool,
+    pub user: User,
     token: AccessToken,
 }
 
@@ -48,9 +49,10 @@ impl FromRequest for Auth {
                 .ok_or(WebError::from(WebErrorKind::InternalServerError))?;
 
             Ok(Self {
-                user_id: user.user_id,
-                name: user.name,
+                user_id: user.user_id.clone(),
+                name: user.name.clone(),
                 is_admin: user.is_admin,
+                user,
                 token: token_info,
             })
         })
@@ -58,11 +60,13 @@ impl FromRequest for Auth {
 }
 
 impl Auth {
+    /// Check if the provided scope is present.
     #[must_use]
     pub fn has_scope(&self, scope: &str) -> bool {
         self.token.scopes().contains(scope)
     }
 
+    /// Get the set of scopes the authorization is authorized for.
     pub fn scopes(&self) -> HashSet<String> {
         self.token.scopes()
     }
@@ -71,7 +75,11 @@ impl Auth {
 /// Authentication using a constant token.
 /// These tokens are created manually.
 pub struct ConstantAccessTokenAuth {
+    /// The name of the client
+    #[allow(unused)]
     pub name: String,
+    /// The secret token
+    #[allow(unused)]
     pub token: String,
 }
 
@@ -100,6 +108,13 @@ impl FromRequest for ConstantAccessTokenAuth {
     }
 }
 
+/// Get an authorization token from, in order:
+/// - The `Authorization` header.
+/// - The `Authorization` cookie.
+///
+/// # Errors
+/// - If the token is not provided.
+/// - If the token is invalid, e.g. it does not start with `Bearer `.
 fn get_authorization_token(req: &HttpRequest) -> WebResult<String> {
     let header = req
         .headers()

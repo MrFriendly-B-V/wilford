@@ -49,6 +49,8 @@ pub enum WebErrorKind {
     InvalidInternalState,
     #[error("Forbidden")]
     Forbidden,
+    #[error("Unsupported")]
+    Unsupported,
     #[error("{0}")]
     Database(#[from] database::driver::Error),
     #[error("EspoCRM error: {0}")]
@@ -66,6 +68,7 @@ impl ResponseError for WebError {
             WebErrorKind::BadRequest => StatusCode::BAD_REQUEST,
             WebErrorKind::Unauthorized => StatusCode::UNAUTHORIZED,
             WebErrorKind::Forbidden => StatusCode::FORBIDDEN,
+            WebErrorKind::Unsupported => StatusCode::NOT_IMPLEMENTED,
             WebErrorKind::InvalidInternalState => StatusCode::INTERNAL_SERVER_ERROR,
             WebErrorKind::Database(_) => StatusCode::INTERNAL_SERVER_ERROR,
             WebErrorKind::Espo(_) => StatusCode::BAD_GATEWAY,

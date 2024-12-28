@@ -3,7 +3,7 @@ use sqlx::{FromRow, Result};
 use std::fmt::Debug;
 use tracing::instrument;
 
-#[derive(Debug, FromRow)]
+#[derive(Debug, Clone, FromRow)]
 pub struct User {
     pub user_id: String,
     pub name: String,

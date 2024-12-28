@@ -20,6 +20,22 @@ pub enum AuthorizationError<E: Error + Debug> {
     Other(#[from] E),
 }
 
+impl<E: Error + Debug> AuthorizationError<E> {
+    /// Convert an authorization error with a generic inner type into an authorization error with a different `Other` type,
+    /// if `E` can be turned into a `T`.
+    // This is not possible with a `impl<T, U> From<AuthorizationError<T>> for AuthorizationError<U> where U: From<T>` as it overlaps
+    // with the standard library in the case that `T = U`. We know it won't, but we can't yet tell the compiler that.
+    fn convert<T: Error + Debug + From<E>>(self) -> AuthorizationError<T> {
+        match self {
+            AuthorizationError::Other(e) => AuthorizationError::Other(T::from(e)),
+            AuthorizationError::InvalidCredentials => AuthorizationError::InvalidCredentials,
+            AuthorizationError::AlreadyExists => AuthorizationError::AlreadyExists,
+            AuthorizationError::TotpNeeded => AuthorizationError::TotpNeeded,
+            AuthorizationError::UnsupportedOperation => AuthorizationError::UnsupportedOperation,
+        }
+    }
+}
+
 /// Information about the authorized user
 #[derive(Debug)]
 pub struct UserInformation {
@@ -31,8 +47,10 @@ pub struct UserInformation {
     /// If true, all scope checks should be ignored.
     pub is_admin: bool,
     /// The name of the user.
+    #[allow(unused)]
     pub name: String,
     /// The email address of the user.
+    #[allow(unused)]
     pub email: String,
 }
 

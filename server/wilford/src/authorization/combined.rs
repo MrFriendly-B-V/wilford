@@ -6,7 +6,6 @@ use crate::authorization::{AuthorizationError, AuthorizationProvider, UserInform
 use crate::config::{AuthorizationProviderType, Config};
 use database::driver::Database;
 use espocrm_rs::EspoApiClient;
-use std::error::Error;
 use std::fmt::Debug;
 use thiserror::Error;
 
@@ -16,23 +15,6 @@ pub enum CombinedAuthorizationProviderError {
     Local(#[from] LocalCredentialsProviderError),
     #[error(transparent)]
     EspoCrm(#[from] EspoAuthorizationProviderError),
-}
-
-/// Convert an authorization error with a generic inner type into a combined authorization error,
-/// if E can be turned into a combined error.
-fn into_combined_error<E>(
-    val: AuthorizationError<E>,
-) -> AuthorizationError<CombinedAuthorizationProviderError>
-where
-    E: Debug + Error + Into<CombinedAuthorizationProviderError>,
-{
-    match val {
-        AuthorizationError::Other(e) => AuthorizationError::Other(e.into()),
-        AuthorizationError::InvalidCredentials => AuthorizationError::InvalidCredentials,
-        AuthorizationError::AlreadyExists => AuthorizationError::AlreadyExists,
-        AuthorizationError::TotpNeeded => AuthorizationError::TotpNeeded,
-        AuthorizationError::UnsupportedOperation => AuthorizationError::UnsupportedOperation,
-    }
 }
 
 /// Abstraction over all the different authorization providers,
@@ -88,12 +70,12 @@ impl<'a> AuthorizationProvider for CombinedAuthorizationProvider<'a> {
             Self::Local(credentials_provider) => credentials_provider
                 .validate_credentials(username, password, totp_code)
                 .await
-                .map_err(into_combined_error)?,
+                .map_err(AuthorizationError::convert)?,
 
             Self::EspoCrm(espocrm) => espocrm
                 .validate_credentials(username, password, totp_code)
                 .await
-                .map_err(into_combined_error)?,
+                .map_err(AuthorizationError::convert)?,
         })
     }
 
@@ -113,11 +95,11 @@ impl<'a> AuthorizationProvider for CombinedAuthorizationProvider<'a> {
             Self::Local(local) => local
                 .set_password(user_id, new_password)
                 .await
-                .map_err(into_combined_error)?,
+                .map_err(AuthorizationError::convert)?,
             Self::EspoCrm(espocrm) => espocrm
                 .set_password(user_id, new_password)
                 .await
-                .map_err(into_combined_error)?,
+                .map_err(AuthorizationError::convert)?,
         })
     }
 
@@ -139,11 +121,11 @@ impl<'a> AuthorizationProvider for CombinedAuthorizationProvider<'a> {
             Self::Local(credentials_provider) => credentials_provider
                 .register_user(name, email, password, is_admin)
                 .await
-                .map_err(into_combined_error)?,
+                .map_err(AuthorizationError::convert)?,
             Self::EspoCrm(espocrm) => espocrm
                 .register_user(name, email, password, is_admin)
                 .await
-                .map_err(into_combined_error)?,
+                .map_err(AuthorizationError::convert)?,
         })
     }
 }
