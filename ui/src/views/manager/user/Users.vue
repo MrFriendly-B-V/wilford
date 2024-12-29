@@ -1,107 +1,119 @@
 <template>
-    <v-container>
-        <ManagePermittedScopesDialog
-            :enabled="managePermittedScopesDialogData.enabled"
-            :user="managePermittedScopesDialogData.user"
-            @close="managePermittedScopesDialogData.enabled = false"
-        ></ManagePermittedScopesDialog>
+  <v-container>
+    <ErrorBanner v-model="error"/>
 
-        <v-card>
-            <v-card-title>
-              <v-btn
-                @click="$router.back()"
-                icon="mdi-arrow-left"
-                density="compact"
-                variant="flat"
-                slim
-              />
-              Users
-            </v-card-title>
-            <v-card-subtitle>All users who have logged in via Wilford</v-card-subtitle>
-            <v-card-text v-if="isManager">
-                <v-data-table
-                    :items="users"
-                    :headers="headers">
+    <ManagePermittedScopesDialog
+      :enabled="dialog.permittedScopes.enabled"
+      :user="dialog.permittedScopes.user"
+      @close="dialog.permittedScopes.enabled = false"
+    ></ManagePermittedScopesDialog>
 
-                    <template v-slot:[`item.isAdmin`]="{ item }">
-                        <v-checkbox
-                            class="justify-center align-center"
-                            hide-details
-                            v-model="item.isAdmin"
-                            :disabled="true"
-                        ></v-checkbox>
-                    </template>
+    <v-card>
+      <v-card-title>
+        <GoBackBtn/>
+        Users
+      </v-card-title>
+      <v-card-subtitle>Manage users</v-card-subtitle>
+      <v-card-text>
+        <v-data-table
+          :headers="headers"
+          :items="users">
 
-                    <template v-slot:[`item.actions`]="{ item }">
-                        <v-tooltip text="Manage permitted scopes">
-                            <template v-slot:activator="{ props }">
-                                <v-btn
-                                    v-bind="props"
-                                    :slim="true"
-                                    size="small"
-                                    @click="openPermittedScopesDialog(item)"
-                                    icon="mdi-telescope">
-                                </v-btn>
-                            </template>
-                        </v-tooltip>
-                    </template>
-                </v-data-table>
-            </v-card-text>
-        </v-card>
-    </v-container>
+          <template v-slot:[`item.isAdmin`]="{ item }">
+            <v-checkbox
+              v-model="item.isAdmin"
+              :disabled="true"
+              class="justify-center align-center"
+              hide-details
+            ></v-checkbox>
+          </template>
+
+          <template v-slot:[`item.actions`]="{ item }">
+            <v-tooltip text="Manage permitted scopes">
+              <template v-slot:activator="{ props }">
+                <v-btn
+                  :slim="true"
+                  icon="mdi-telescope"
+                  size="small"
+                  v-bind="props"
+                  @click="openPermittedScopesDialog(item)">
+                </v-btn>
+              </template>
+            </v-tooltip>
+          </template>
+        </v-data-table>
+      </v-card-text>
+    </v-card>
+  </v-container>
 </template>
 
-<script setup lang="ts">
+<script lang="ts">
 
-import {onMounted, Ref, ref} from "vue";
-import {Token} from "@/scripts/token";
+import {defineComponent} from "vue";
 import {User} from "@/scripts/user";
+import {DataTableHeaders} from "@/main";
 import ManagePermittedScopesDialog from "@/views/manager/user/ManagePermittedScopesDialog.vue";
-import {ClientInfo} from "@/scripts/clients";
+import ErrorBanner from "@/components/banners/ErrorBanner.vue";
+import GoBackBtn from "@/components/buttons/GoBackBtn.vue";
 
-let isManager = ref(false);
-let users: Ref<User[]> = ref([]);
-
-interface ManagePermittedScopesDialogData {
-    enabled: boolean,
-    user?: User
+interface Data {
+  error?: string;
+  loading: boolean;
+  users: User[];
+  dialog: {
+    permittedScopes: {
+      enabled: boolean,
+      user?: User,
+    }
+  },
+  headers: DataTableHeaders,
 }
 
-let managePermittedScopesDialogData = ref(<ManagePermittedScopesDialogData> {
-    enabled: false,
-    user: undefined,
-})
-
-const headers: { title: string, value: string }[] = [
-    {
-        title: "Name",
-        value: "name"
-    },
-    {
-        title: "EspoCRM Admin",
-        value: "isAdmin"
-    },
-    {
-        title: "Actions",
-        value: "actions"
+export default defineComponent({
+  components: {GoBackBtn, ErrorBanner, ManagePermittedScopesDialog},
+  data(): Data {
+    return {
+      error: undefined,
+      loading: true,
+      users: [],
+      dialog: {
+        permittedScopes: {
+          enabled: false,
+          user: undefined,
+        }
+      },
+      headers: [
+        {
+          title: "Name",
+          value: "name"
+        },
+        {
+          title: "EspoCRM Admin",
+          value: "isAdmin"
+        },
+        {
+          title: "Actions",
+          value: "actions"
+        }
+      ]
     }
-]
-
-onMounted(async () => {
-    const tokenInfo = await Token.getCurrentInfo()
-    isManager.value = tokenInfo.scopes.includes('wilford.manage');
-
-    if(!isManager.value) {
-        const client = await ClientInfo.getInternal();
-        window.location.href = client.getAuthorizationRedirect(true);
+  },
+  async mounted() {
+    await this.loadUsers();
+  },
+  methods: {
+    async loadUsers() {
+      const result = await User.list();
+      if (result.isOk()) {
+        this.users = result.unwrap();
+      } else {
+        this.error = result.unwrapErr().message;
+      }
+    },
+    openPermittedScopesDialog(user: User) {
+      this.dialog.permittedScopes.user = user;
+      this.dialog.permittedScopes.enabled = true;
     }
-
-    users.value = await User.list();
+  }
 })
-
-function openPermittedScopesDialog(user: User) {
-    managePermittedScopesDialogData.value.user = user;
-    managePermittedScopesDialogData.value.enabled = true;
-}
-
 </script>

@@ -6,6 +6,7 @@ use espocrm_rs::EspoApiClient;
 use thiserror::Error;
 use tracing::instrument;
 
+/// Authorization provider utilizing EspoCRM as it's credentials validator and user database.
 #[derive(Debug)]
 pub struct EspoAuthorizationProvider<'a> {
     database_driver: &'a Database,

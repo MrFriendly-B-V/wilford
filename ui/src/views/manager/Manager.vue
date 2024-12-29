@@ -2,13 +2,7 @@
   <v-container>
     <v-card>
       <v-card-title>
-        <v-btn
-          @click="$router.back()"
-          icon="mdi-arrow-left"
-          density="compact"
-          variant="flat"
-          slim
-        />
+        <GoBackBtn/>
         Manage Wilford
       </v-card-title>
       <v-card-text>
@@ -31,6 +25,7 @@
 <script lang="ts">
 import Vue from "vue"
 import { defineComponent } from "vue";
+import GoBackBtn from "@/components/buttons/GoBackBtn.vue";
 
 interface Data {
   loading: boolean,
@@ -41,6 +36,7 @@ interface Data {
 }
 
 export default defineComponent({
+  components: {GoBackBtn},
   data(): Data {
     return {
       loading: true,

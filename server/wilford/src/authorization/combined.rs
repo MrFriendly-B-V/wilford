@@ -1,6 +1,6 @@
 use crate::authorization::espo::{EspoAuthorizationProvider, EspoAuthorizationProviderError};
 use crate::authorization::local_provider::{
-    LocalCredentialsProvider, LocalCredentialsProviderError,
+    LocalAuthorizationProvider, LocalAuthorizationProviderError,
 };
 use crate::authorization::{AuthorizationError, AuthorizationProvider, UserInformation};
 use crate::config::{AuthorizationProviderType, Config};
@@ -8,11 +8,12 @@ use database::driver::Database;
 use espocrm_rs::EspoApiClient;
 use std::fmt::Debug;
 use thiserror::Error;
+use tracing::instrument;
 
 #[derive(Debug, Error)]
 pub enum CombinedAuthorizationProviderError {
     #[error(transparent)]
-    Local(#[from] LocalCredentialsProviderError),
+    Local(#[from] LocalAuthorizationProviderError),
     #[error(transparent)]
     EspoCrm(#[from] EspoAuthorizationProviderError),
 }
@@ -20,7 +21,7 @@ pub enum CombinedAuthorizationProviderError {
 /// Abstraction over all the different authorization providers,
 /// providing a single object to work with.
 pub enum CombinedAuthorizationProvider<'a> {
-    Local(LocalCredentialsProvider<'a>),
+    Local(LocalAuthorizationProvider<'a>),
     EspoCrm(EspoAuthorizationProvider<'a>),
 }
 
@@ -35,7 +36,7 @@ impl<'a> CombinedAuthorizationProvider<'a> {
     pub fn new(config: &'a Config, database: &'a Database) -> Self {
         match config.authorization_provider {
             AuthorizationProviderType::Local => {
-                Self::Local(LocalCredentialsProvider::new(database))
+                Self::Local(LocalAuthorizationProvider::new(database))
             }
             AuthorizationProviderType::EspoCrm => {
                 if let Some(espo_config) = &config.espo {
@@ -110,6 +111,7 @@ impl<'a> AuthorizationProvider for CombinedAuthorizationProvider<'a> {
         }
     }
 
+    #[instrument(skip(self, email, password))]
     async fn register_user(
         &self,
         name: &str,

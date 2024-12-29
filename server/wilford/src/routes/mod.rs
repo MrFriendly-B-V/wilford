@@ -11,7 +11,7 @@ mod well_known;
 
 use crate::authorization::combined::CombinedAuthorizationProviderError;
 use crate::authorization::espo::EspoAuthorizationProviderError;
-use crate::authorization::local_provider::LocalCredentialsProviderError;
+use crate::authorization::local_provider::LocalAuthorizationProviderError;
 use crate::authorization::AuthorizationError;
 use crate::routes::error::{WebError, WebErrorKind};
 pub use appdata::*;
@@ -56,8 +56,8 @@ fn auth_error_to_web_error<T>(
         Err(AuthorizationError::AlreadyExists) => Err(WebErrorKind::BadRequest.into()),
         Err(AuthorizationError::Other(e)) => Err(match e {
             CombinedAuthorizationProviderError::Local(e) => match e {
-                LocalCredentialsProviderError::Database(e) => e.into(),
-                LocalCredentialsProviderError::Hashing(_) => {
+                LocalAuthorizationProviderError::Database(e) => e.into(),
+                LocalAuthorizationProviderError::Hashing(_) => {
                     WebErrorKind::InternalServerError.into()
                 }
             },

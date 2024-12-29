@@ -32,7 +32,7 @@ services:
       - "CONFIG_PATH=/config.json"
       - "RUST_LOG=DEBUG"
     volumes:
-      - "./config.json:/config.json"
+      - "./config_docker.json:/config.json"
       - "./test_oidc_key.pem:/test_oidc_key.pem"
       - "./test_oidc_key.pem.pub:/test_oidc_key.pem.pub"
     depends_on:

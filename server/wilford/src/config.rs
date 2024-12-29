@@ -3,6 +3,7 @@ use serde::Deserialize;
 use std::path::{Path, PathBuf};
 use tokio::fs;
 use tokio::io::AsyncReadExt;
+use tracing::trace;
 
 #[derive(Debug, Deserialize)]
 struct EnvConfig {
@@ -99,6 +100,8 @@ impl EnvConfig {
 
 impl Config {
     async fn open(path: &Path) -> Result<Self> {
+        trace!("Opening config from {path:?}");
+
         let mut f = fs::File::open(path).await?;
         let mut buf = Vec::new();
         f.read_to_end(&mut buf).await?;
@@ -107,11 +110,15 @@ impl Config {
     }
 
     pub async fn read_oidc_signing_key(&self) -> Result<String> {
-        Self::read_pem(&self.oidc_signing_key).await
+        let absolute = self.oidc_signing_key.canonicalize()?;
+        trace!("Reading OIDC signing key from {absolute:?}");
+        Self::read_pem(&absolute).await
     }
 
     pub async fn read_oidc_public_key(&self) -> Result<String> {
-        Self::file_read_string(&self.oidc_public_key).await
+        let absolute = self.oidc_public_key.canonicalize()?;
+        trace!("Reading OIDC public key from {absolute:?}");
+        Self::file_read_string(&absolute).await
     }
 
     async fn read_pem(p: &Path) -> Result<String> {

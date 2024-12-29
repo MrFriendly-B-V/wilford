@@ -52,6 +52,12 @@ impl User {
             .await?)
     }
 
+    pub async fn count(driver: &Database) -> Result<i64> {
+        Ok(sqlx::query_scalar("SELECT COUNT(1) FROM users")
+            .fetch_one(&**driver)
+            .await?)
+    }
+
     #[instrument]
     pub async fn list(driver: &Database) -> Result<Vec<Self>> {
         Ok(sqlx::query_as("SELECT * FROM users")
@@ -125,8 +131,8 @@ impl User {
                 .await?;
         } else {
             sqlx::query("INSERT INTO user_credentials (user_id, password_hash) VALUES (?, ?)")
-                .bind(password.as_ref())
                 .bind(&self.user_id)
+                .bind(password.as_ref())
                 .execute(&**driver)
                 .await?;
         }

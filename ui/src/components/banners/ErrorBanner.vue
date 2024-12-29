@@ -10,7 +10,7 @@
 
 <script lang="ts">
 import {defineComponent} from "vue"
-import MaterialBanner from "@/components/MaterialBanner.vue";
+import MaterialBanner from "@/components/banners/MaterialBanner.vue";
 
 export default defineComponent({
   components: {MaterialBanner},

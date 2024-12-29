@@ -3,6 +3,7 @@ use crate::authorization::AuthorizationProvider;
 use crate::routes::error::{WebErrorKind, WebResult};
 use crate::routes::{auth_error_to_web_error, WConfig, WDatabase};
 use actix_web::web;
+use database::user::User;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize)]
@@ -39,11 +40,14 @@ pub async fn register(
     }
 
     let payload = payload.into_inner();
+
+    let first_user = User::count(&database).await? == 0;
+
     // Create the user.
     // `unwrap_left` is safe because we will never get a `TotpRequired` error here.
     let new_user = auth_error_to_web_error(
         provider
-            .register_user(&payload.name, &payload.email, &payload.password, false)
+            .register_user(&payload.name, &payload.email, &payload.password, first_user)
             .await,
     )?
     .unwrap_left();

@@ -7,13 +7,7 @@
 
         <v-card>
             <v-card-title>
-              <v-btn
-                @click="$router.back()"
-                icon="mdi-arrow-left"
-                density="compact"
-                variant="flat"
-                slim
-              />
+              <GoBackBtn/>
               Constant Access Tokens
             </v-card-title>
             <v-card-subtitle>Manage CAT Tokens</v-card-subtitle>
@@ -62,6 +56,7 @@ import {Token} from "@/scripts/token";
 import {ClientInfo} from "@/scripts/clients";
 import {CatToken} from "@/scripts/cat";
 import AddConstantAccessTokenDialog from "@/views/manager/cat/AddConstantAccessTokenDialog.vue";
+import GoBackBtn from "@/components/buttons/GoBackBtn.vue";
 
 let isManager = ref(false);
 let tokens: Ref<CatToken[]> = ref([]);

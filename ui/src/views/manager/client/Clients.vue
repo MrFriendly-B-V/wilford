@@ -7,13 +7,7 @@
 
         <v-card>
             <v-card-title>
-              <v-btn
-                @click="$router.back()"
-                icon="mdi-arrow-left"
-                density="compact"
-                variant="flat"
-                slim
-              />
+              <GoBackBtn/>
               OAuth2 Clients
             </v-card-title>
             <v-card-subtitle>Manage OAuth2 clients</v-card-subtitle>
@@ -63,6 +57,7 @@ import {onMounted, ref, Ref} from "vue";
 import {ClientInfo} from "@/scripts/clients";
 import {Token} from "@/scripts/token";
 import CreateClientDialog from "@/views/manager/client/CreateClientDialog.vue";
+import GoBackBtn from "@/components/buttons/GoBackBtn.vue";
 
 const headers: { title: string, value: string }[] = [
     {

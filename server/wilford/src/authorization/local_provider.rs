@@ -8,27 +8,27 @@ use thiserror::Error;
 use tracing::{instrument, warn};
 
 /// Credential provider utilizing the local database
-pub struct LocalCredentialsProvider<'a> {
+pub struct LocalAuthorizationProvider<'a> {
     driver: &'a Database,
 }
 
 #[derive(Debug, Error)]
-pub enum LocalCredentialsProviderError {
+pub enum LocalAuthorizationProviderError {
     #[error(transparent)]
     Database(#[from] database::driver::Error),
     #[error(transparent)]
     Hashing(#[from] bcrypt::BcryptError),
 }
 
-impl<'a> LocalCredentialsProvider<'a> {
-    /// Create a new local credentials provider.
+impl<'a> LocalAuthorizationProvider<'a> {
+    /// Create a new provider.
     pub fn new(driver: &'a Database) -> Self {
         Self { driver }
     }
 }
 
-impl<'a> AuthorizationProvider for LocalCredentialsProvider<'a> {
-    type Error = LocalCredentialsProviderError;
+impl<'a> AuthorizationProvider for LocalAuthorizationProvider<'a> {
+    type Error = LocalAuthorizationProviderError;
 
     #[instrument(skip(self, password))]
     async fn validate_credentials(
@@ -148,13 +148,13 @@ impl<'a> AuthorizationProvider for LocalCredentialsProvider<'a> {
 ///
 /// # Errors
 /// If hashing fails
-fn hash_password(password: &str) -> Result<String, LocalCredentialsProviderError> {
+fn hash_password(password: &str) -> Result<String, LocalAuthorizationProviderError> {
     // We are explicit with the format wanted, thus we use `hash_with_result`, rather than
     // `hash`. Although at the moment this block is identical to bcrypt's `hash` function,
     // this could change in the future. That would result in some rather annoying
     // differences in the way we hash.
     hash_with_result(password, bcrypt::DEFAULT_COST)
-        .map_err(|e| LocalCredentialsProviderError::from(e))
+        .map_err(|e| LocalAuthorizationProviderError::from(e))
         .map(|parts| parts.format_for_version(Version::TwoB))
 }
 

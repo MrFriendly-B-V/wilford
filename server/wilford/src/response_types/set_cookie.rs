@@ -3,23 +3,28 @@ use actix_web::cookie::{Cookie, Expiration, SameSite};
 use actix_web::{HttpRequest, HttpResponse, Responder};
 use std::borrow::Cow;
 
+/// Set a cookie on response
 pub struct SetCookie<'c, I> {
-    k: Cow<'c, str>,
-    v: Cow<'c, str>,
-    i: I,
+    /// The cookie name
+    name: Cow<'c, str>,
+    /// The cookie value
+    value: Cow<'c, str>,
+    /// The inner responder
+    responder: I,
 }
 
 impl<'c, I> SetCookie<'c, I> {
-    pub fn new<N, V>(k: N, v: V, i: I) -> Self
+    /// Create a new cookie and responds with the responder provided.
+    pub fn new<N, V>(name: N, value: V, responder: I) -> Self
     where
         I: Responder,
         N: Into<Cow<'c, str>>,
         V: Into<Cow<'c, str>>,
     {
         Self {
-            k: k.into(),
-            v: v.into(),
-            i,
+            name: name.into(),
+            value: value.into(),
+            responder,
         }
     }
 }
@@ -31,12 +36,16 @@ where
     type Body = I::Body;
 
     fn respond_to(self, req: &HttpRequest) -> HttpResponse<Self::Body> {
-        let mut inner_response = self.i.respond_to(req);
-        let mut cookie = Cookie::new(self.k, self.v);
+        // Could be a JSON body e.g.
+        let mut inner_response = self.responder.respond_to(req);
+        let mut cookie = Cookie::new(self.name, self.value);
         cookie.set_secure(true);
+
+        // Perhaps make this configurable?
         cookie.set_expires(Expiration::DateTime(
             OffsetDateTime::now_utc() + Duration::days(30),
         ));
+
         cookie.set_same_site(SameSite::None);
         cookie.set_path("/");
 
@@ -45,16 +54,21 @@ where
     }
 }
 
+/// Set a cookie, but not always. Useful for when a responder should not always
+/// set a cookie.
 pub struct MaybeCookie<'c, I> {
+    /// The cookie to set
     cookie: Option<SetCookie<'c, I>>,
-    i: Option<I>,
+    /// If the cookie is not set, the responder to use
+    responder: Option<I>,
 }
 
 impl<'c, I> MaybeCookie<'c, I> {
+    /// Respond with a cookie
     pub fn some(cookie: SetCookie<'c, I>) -> Self {
         Self {
             cookie: Some(cookie),
-            i: None,
+            responder: None,
         }
     }
 }
@@ -63,10 +77,11 @@ impl<'c, I> MaybeCookie<'c, I>
 where
     I: Responder,
 {
-    pub fn none(i: I) -> Self {
+    /// Do not respond with a cookie, but rather with the responder provided.
+    pub fn none(responder: I) -> Self {
         Self {
             cookie: None,
-            i: Some(i),
+            responder: Some(responder),
         }
     }
 }
@@ -78,8 +93,10 @@ where
     type Body = I::Body;
 
     fn respond_to(self, req: &HttpRequest) -> HttpResponse<Self::Body> {
-        match (self.cookie, self.i) {
+        match (self.cookie, self.responder) {
+            // Send the cookie, and let the cookie handle the inner responder
             (Some(c), _) => c.respond_to(req),
+            // Don't send a cookie, let us handle the inner cookie
             (None, Some(i)) => i.respond_to(req),
             _ => unreachable!(),
         }

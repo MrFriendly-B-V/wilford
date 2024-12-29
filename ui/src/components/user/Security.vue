@@ -26,7 +26,7 @@
 import {defineComponent, PropType} from 'vue';
 import {User} from "@/scripts/user";
 import ChangePassword from "@/components/user/security/ChangePassword.vue";
-import MaterialBanner from "@/components/MaterialBanner.vue";
+import MaterialBanner from "@/components/banners/MaterialBanner.vue";
 
 interface Data {
   loading: {

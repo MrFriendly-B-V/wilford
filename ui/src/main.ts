@@ -16,6 +16,9 @@ export const server = isLocalhost
 export type InputValidationRule = (v: string) => string | boolean;
 export type InputValidationRules = InputValidationRule[];
 
+export type DataTableHeader = { title: string, value: string };
+export type DataTableHeaders = DataTableHeader[];
+
 // Components
 import App from './App.vue'
 

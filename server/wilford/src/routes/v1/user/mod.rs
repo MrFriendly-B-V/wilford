@@ -7,6 +7,7 @@ mod info;
 mod list;
 mod permitted_scopes;
 mod register;
+mod registration_required;
 mod supports_password_change;
 
 pub struct Router;
@@ -18,6 +19,10 @@ impl Routable for Router {
                 .configure(permitted_scopes::Router::configure)
                 .route("/info", web::get().to(info::info))
                 .route("/list", web::get().to(list::list))
+                .route(
+                    "/registration-required",
+                    web::get().to(registration_required::registration_required),
+                )
                 .route(
                     "/change-password",
                     web::post().to(change_password::change_password),

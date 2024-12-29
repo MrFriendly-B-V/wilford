@@ -2,7 +2,7 @@ use crate::authorization::combined::{
     CombinedAuthorizationProvider, CombinedAuthorizationProviderError,
 };
 use crate::authorization::espo::EspoAuthorizationProviderError;
-use crate::authorization::local_provider::LocalCredentialsProviderError;
+use crate::authorization::local_provider::LocalAuthorizationProviderError;
 use crate::authorization::{AuthorizationError, AuthorizationProvider, UserInformation};
 use crate::routes::appdata::{WConfig, WDatabase};
 use crate::routes::error::{WebErrorKind, WebResult};
@@ -86,8 +86,8 @@ pub async fn login(
                     EspoAuthorizationProviderError::Espocrm(e) => WebErrorKind::Espo(e).into(),
                 },
                 CombinedAuthorizationProviderError::Local(e) => match e {
-                    LocalCredentialsProviderError::Database(e) => e.into(),
-                    LocalCredentialsProviderError::Hashing(_) => {
+                    LocalAuthorizationProviderError::Database(e) => e.into(),
+                    LocalAuthorizationProviderError::Hashing(_) => {
                         WebErrorKind::InternalServerError.into()
                     }
                 },

@@ -7,18 +7,21 @@
         v-model="oldPassword"
         color="primary"
         :rules="rules.required"
+        type="password"
         label="Old Password"
       />
       <v-text-field
         v-model="newPassword"
         color="primary"
         :rules="rules.password"
+        type="password"
         label="New Password"
       />
       <v-text-field
         v-model="repeatNewPassword"
         color="primary"
         :rules="rules.repeatPassword"
+        type="password"
         label="Repeat New Password"
       />
     </v-form>
@@ -40,8 +43,8 @@ import {defineComponent, PropType} from 'vue';
 import {User} from "@/scripts/user";
 import {InputValidationRules} from "@/main";
 import {VForm} from "vuetify/components";
-import MaterialBanner from "@/components/MaterialBanner.vue";
-import ErrorBanner from "@/components/ErrorBanner.vue";
+import MaterialBanner from "@/components/banners/MaterialBanner.vue";
+import ErrorBanner from "@/components/banners/ErrorBanner.vue";
 
 interface Data {
   error?: string,

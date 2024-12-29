@@ -1,7 +1,7 @@
 import {server} from "@/main";
 import {ClientInfo} from "@/scripts/clients";
 import {Result} from "@/scripts/core/result";
-import {ApiError, ApiErrorKind} from "@/scripts/core/error";
+import {ApiError} from "@/scripts/core/error";
 import {fetch1} from "@/scripts/core/fetch1";
 
 interface _User {
@@ -35,19 +35,16 @@ export class User {
         ).unwrap()
     }
 
-    static async list(): Promise<User[]> {
-        const r = await fetch(`${server}/api/v1/user/list`, {
-            headers: {
-                'Authorization': `Bearer ${window.localStorage.getItem('access_token')}`
-            }
-        })
-
-        interface Response {
-            users: _User[]
-        }
-
-        const j: Response = await r.json();
-        return j.users.map(u => new User(u.name, u.espo_user_id, u.is_admin))
+    static async list(): Promise<Result<User[], ApiError>> {
+        return await (await fetch1(`${server}/api/v1/user/list`, ))
+          .map1(async (response) => {
+              interface Payload {
+                  users: _User[]
+              }
+              
+              const payload: Payload = await response.json();
+              return payload.users.map(u => new User(u.name, u.espo_user_id, u.is_admin))
+          });
     }
 
     async listPermittedScopes(): Promise<string[]> {
@@ -93,6 +90,18 @@ export class User {
         })
     }
     
+    static async isFirstRegister(): Promise<Result<boolean, ApiError>> {
+        return await (await fetch1(`${server}/api/v1/user/registration-required`))
+          .map1(async (response) => {
+              interface Payload {
+                  registration_required: boolean,
+              }
+              
+              const payload: Payload = await response.json();
+              return payload.registration_required;
+          });
+    }
+    
     static async passwordChangeSupported(): Promise<Result<boolean, ApiError>> {
         return await (await fetch1(`${server}/api/v1/user/supports-password-change`))
           .map1(async (response) => {
@@ -108,10 +117,28 @@ export class User {
     async updatePassword(oldPassword: string, newPassword: string) {
         await fetch1(`${server}/api/v1/user/change-password`, {
             method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify({
                 old_password: oldPassword,
                 new_password: newPassword
             }),
         });
+    }
+    
+    static async register(name: string, email: string, password: string): Promise<Result<void, ApiError>> {
+        return (await fetch1(`${server}/api/v1/user/register`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                name: name,
+                email: email,
+                password: password,
+            })
+        }))
+          .map(() => {});
     }
 }
