@@ -1,5 +1,5 @@
 import {server} from "@/main";
-import {ClientInfo} from "@/components/clients";
+import {ClientInfo} from "@/scripts/clients";
 
 interface _TokenInfo {
     scope: string,
@@ -15,7 +15,7 @@ export class TokenInfo {
 
 export class Token {
 
-    static async getCurrentInfo(): Promise<TokenInfo> {
+    static async getCurrentInfo(wantManager: boolean = false): Promise<TokenInfo> {
         const r = await fetch(`${server}/api/v1/auth/token-info`, {
             headers: {
                 'Authorization': `Bearer ${window.localStorage.getItem('access_token')}`
@@ -24,7 +24,7 @@ export class Token {
 
         if(r.status == 401) {
             const client = await ClientInfo.getInternal();
-            window.location.href = client.getAuthorizationRedirect();
+            window.location.href = client.getAuthorizationRedirect(wantManager);
         }
 
         const j: _TokenInfo = await r.json();

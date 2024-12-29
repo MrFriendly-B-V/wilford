@@ -27,7 +27,7 @@
 </template>
 
 <script setup lang="ts">
-import {User} from "@/components/user";
+import {User} from "@/scripts/user";
 import {Ref, ref} from "vue";
 
 const props = defineProps({

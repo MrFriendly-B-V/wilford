@@ -1,5 +1,8 @@
 import {server} from "@/main";
-import {ClientInfo} from "@/components/clients";
+import {ClientInfo} from "@/scripts/clients";
+import {Result} from "@/scripts/core/result";
+import {ApiError, ApiErrorKind} from "@/scripts/core/error";
+import {fetch1} from "@/scripts/core/fetch1";
 
 interface _User {
     name: string,
@@ -19,19 +22,17 @@ export class User {
     }
 
     static async getCurrent(): Promise<User> {
-        const r = await fetch(`${server}/api/v1/user/info`, {
-            headers: {
-                'Authorization': `Bearer ${window.localStorage.getItem('access_token')}`
-            }
-        })
-
-        if(r.status == 401) {
-            const client = await ClientInfo.getInternal();
-            window.location.href = client.getAuthorizationRedirect();
-        }
-
-        const j: _User = await r.json();
-        return new User(j.name, j.espo_user_id, j.is_admin);
+        return (await (await fetch1(`${server}/api/v1/user/info`))
+          .map1(async (r) => {
+              if(r.status == 401) {
+                  const client = await ClientInfo.getInternal();
+                  window.location.href = client.getAuthorizationRedirect();
+              }
+              
+              const j: _User = await r.json();
+              return new User(j.name, j.espo_user_id, j.is_admin);
+          })
+        ).unwrap()
     }
 
     static async list(): Promise<User[]> {
@@ -90,5 +91,27 @@ export class User {
                 'Authorization': `Bearer ${window.localStorage.getItem('access_token')}`
             }
         })
+    }
+    
+    static async passwordChangeSupported(): Promise<Result<boolean, ApiError>> {
+        return await (await fetch1(`${server}/api/v1/user/supports-password-change`))
+          .map1(async (response) => {
+              interface Response {
+                  password_change_supported: boolean;
+              }
+              
+              const payload: Response = await response.json();
+              return payload.password_change_supported;
+          })
+    }
+    
+    async updatePassword(oldPassword: string, newPassword: string) {
+        await fetch1(`${server}/api/v1/user/change-password`, {
+            method: 'POST',
+            body: JSON.stringify({
+                old_password: oldPassword,
+                new_password: newPassword
+            }),
+        });
     }
 }

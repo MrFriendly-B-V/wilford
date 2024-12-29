@@ -12,7 +12,8 @@ use database::oauth2_client::OAuth2PendingAuthorization;
 use database::user::User;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
-use tracing::{instrument, warn};
+use tap::TapFallible;
+use tracing::{instrument, warn, warn_span, Instrument};
 
 #[derive(Debug, Deserialize)]
 pub struct Request {
@@ -28,7 +29,7 @@ pub struct Response {
     totp_required: bool,
 }
 
-#[instrument(skip_all)]
+#[instrument(skip(database, config))]
 pub async fn login(
     database: WDatabase,
     config: WConfig,
@@ -36,7 +37,9 @@ pub async fn login(
 ) -> WebResult<web::Json<Response>> {
     // Get the authorization assocated with the provided token
     let authorization = OAuth2PendingAuthorization::get_by_id(&database, &payload.authorization)
-        .await?
+        .instrument(warn_span!("OAuth2PendingAuthorization::get_by_id"))
+        .await
+        .tap_err(|e| warn!("{e}"))?
         .ok_or(WebErrorKind::NotFound)?;
 
     // Get the provider backend
@@ -49,7 +52,9 @@ pub async fn login(
             &payload.password,
             payload.totp_code.as_deref(),
         )
+        .instrument(warn_span!("auth_provider::validate_credentials"))
         .await
+        .tap_err(|e| warn!("{e}"))
     {
         Err(AuthorizationError::InvalidCredentials) => {
             return Ok(web::Json(Response {
@@ -96,7 +101,11 @@ pub async fn login(
     // For optimizations, we evaluate the is_admin check first, followed by the scope check. Due to
     // short-circuiting behaviour, the scope check is only evaluated if the user is _not_ an admin.
     // We use the lambda function to reduce the complecity of the if statement.
-    let scope_check = || are_scopes_allowed(&database, &authorization, &user_information);
+    let scope_check = || {
+        are_scopes_allowed(&database, &authorization, &user_information)
+            .instrument(warn_span!("scope_check"))
+    };
+
     if !user_information.is_admin && !scope_check().await? {
         return Err(WebErrorKind::Forbidden.into());
     }
@@ -104,7 +113,9 @@ pub async fn login(
     // Mark the authorization as authorized.
     authorization
         .set_user_id(&database, &user_information.id)
+        .instrument(warn_span!("authorization::set_user_id"))
         .await
+        .tap_err(|e| warn!("{e}"))
         .map_err(|_| WebErrorKind::BadRequest)?;
 
     Ok(web::Json(Response {
@@ -113,6 +124,7 @@ pub async fn login(
     }))
 }
 
+#[instrument(skip_all)]
 async fn are_scopes_allowed(
     database: &Database,
     authorization: &OAuth2PendingAuthorization,

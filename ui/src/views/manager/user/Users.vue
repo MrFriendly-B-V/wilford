@@ -8,13 +8,14 @@
 
         <v-card>
             <v-card-title>
-                <v-btn
-                    icon="mdi-arrow-left"
-                    :flat="true"
-                    :slim="true"
-                    to="/"
-                ></v-btn>
-                Users
+              <v-btn
+                @click="$router.back()"
+                icon="mdi-arrow-left"
+                density="compact"
+                variant="flat"
+                slim
+              />
+              Users
             </v-card-title>
             <v-card-subtitle>All users who have logged in via Wilford</v-card-subtitle>
             <v-card-text v-if="isManager">
@@ -53,10 +54,10 @@
 <script setup lang="ts">
 
 import {onMounted, Ref, ref} from "vue";
-import {Token} from "@/components/token";
-import {User} from "@/components/user";
+import {Token} from "@/scripts/token";
+import {User} from "@/scripts/user";
 import ManagePermittedScopesDialog from "@/views/manager/user/ManagePermittedScopesDialog.vue";
-import {ClientInfo} from "@/components/clients";
+import {ClientInfo} from "@/scripts/clients";
 
 let isManager = ref(false);
 let users: Ref<User[]> = ref([]);

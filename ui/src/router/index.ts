@@ -4,34 +4,55 @@ import {createRouter, createWebHistory} from 'vue-router'
 const routes = [
   {
     path: '/',
-    component: () => import('@/layouts/default/Default.vue'),
     children: [
       {
         path: '',
-        name: 'Home',
-        component: () => import('@/views/Home.vue')
+        component: () => import('@/layouts/authorizations/Authorized.vue'),
+        children: [
+          {
+            path: '',
+            name: 'Home',
+            component: () => import('@/views/Home.vue')
+          },
+          {
+            path: '/me',
+            name: 'me',
+            component: () => import('@/views/me/Me.vue'),
+          }
+        ]
       },
       {
-        path: 'login',
-        name: 'Login',
-        component: () => import('@/views/Login.vue')
-      },
-      {
-        path: 'authorize',
-        name: 'Authorize',
-        component: () => import('@/views/Authorize.vue')
-      },
-      {
-        path: 'login-ok',
-        name: 'Login OK',
-        component: () => import('@/views/LoginOk.vue')
-      },
+        path: '',
+        component: () => import('@/layouts/authorizations/Unauthorized.vue'),
+        children: [
+          {
+            path: 'login',
+            name: 'Login',
+            component: () => import('@/views/Login.vue')
+          },
+          {
+            path: 'authorize',
+            name: 'Authorize',
+            component: () => import('@/views/Authorize.vue')
+          },
+          {
+            path: 'login-ok',
+            name: 'Login OK',
+            component: () => import('@/views/LoginOk.vue')
+          },
+        ]
+      }
     ],
   },
   {
     path: '/manager',
-    component: () => import('@/layouts/default/Default.vue'),
+    component: () => import('@/layouts/authorizations/AuthorizedManager.vue'),
     children: [
+      {
+        path: '',
+        name: "Manager",
+        component: () => import('@/views/manager/Manager.vue')
+      },
       {
         path: 'users',
         name: 'Users',

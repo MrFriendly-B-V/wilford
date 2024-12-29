@@ -7,13 +7,14 @@
 
         <v-card>
             <v-card-title>
-                <v-btn
-                    icon="mdi-arrow-left"
-                    :flat="true"
-                    :slim="true"
-                    to="/"
-                ></v-btn>
-                Constant Access Tokens
+              <v-btn
+                @click="$router.back()"
+                icon="mdi-arrow-left"
+                density="compact"
+                variant="flat"
+                slim
+              />
+              Constant Access Tokens
             </v-card-title>
             <v-card-subtitle>Manage CAT Tokens</v-card-subtitle>
             <div class="d-flex flex-row pr-3">
@@ -57,9 +58,9 @@
 <script setup lang="ts">
 
 import {onMounted, Ref, ref} from "vue";
-import {Token} from "@/components/token";
-import {ClientInfo} from "@/components/clients";
-import {CatToken} from "@/components/cat";
+import {Token} from "@/scripts/token";
+import {ClientInfo} from "@/scripts/clients";
+import {CatToken} from "@/scripts/cat";
 import AddConstantAccessTokenDialog from "@/views/manager/cat/AddConstantAccessTokenDialog.vue";
 
 let isManager = ref(false);

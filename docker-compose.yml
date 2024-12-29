@@ -4,6 +4,8 @@ services:
     image: mariadb
     volumes:
       - "./tmp/mariadb-wilford:/var/lib/mysql"
+    ports:
+      - "3306:3306"
     environment:
       - "MARIADB_ROOT_PASSWORD=123"
       - "MARIADB_USER=wilford"
