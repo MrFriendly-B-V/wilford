@@ -1,27 +1,33 @@
 # Wilford
-Bolted-on OAuth2 provider using EspoCRM as credentials provider.
+OAuth2 and OpenID Connect implementation.
 
-You create accounts in EspoCRM, 
-configure permissions here in Wilford. 
-Your applications will then authenticate with Wilford, 
-and your users can continue using their EspoCRM login credentials.
+## Authorization provders
+- EspoCRM: Utilizes the EspoCRM system as it's password and user managment system
+- Local: Utilizes the local database as it's password and user managment system
 
 ## Development
+Requirments:
+- Server
+  - [Rust compiler, Cargo](https://rust-lang.org)
+  - Docker
+- Frontend
+  - Node >= 22
+  - Yarn
+
 - Start everything with
 ```bash
-make up
+make dev
 ```
 This will:
 - Create an OIDC signing key if it doesn't exist
 - Copy `sample_config.json` to `config.json`
-- Start all containers
+- Start the server and the frontend
 
 The following services will be available:
 - The backend, on port [2521](http://localhost:2512)
-- The frontend, on port [2522](http://localhost:2522)
-- The docs, on port [2523](http://localhost:2523)
-- EspoCRM, on port [2524](http://localhost:2524)
+- The frontend, on port [3000](http://localhost:3000)
 
+## Configuring EspoCRM
 After starting, you should configure an API-client in EspoCRM:
 1. Log in with EspoCRM [here](http://localhost:2524). Your username and password are `admin`
 2. In the top right, select the three dots > Administration
@@ -42,6 +48,8 @@ make up
 ```
 
 ## Generate OIDC Key
+When using `make dev`, this is done automatically.
+
 ```bash
 # Private key
 openssl genrsa -out ./oidc.pem 4096
