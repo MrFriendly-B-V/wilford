@@ -59,6 +59,8 @@ pub enum WebErrorKind {
     InternalServerError,
     #[error("Failed to parse PKCS8 SPKI: {0}")]
     RsaPkcs8Spki(#[from] rsa::pkcs8::spki::Error),
+    #[error("Failed to send email")]
+    Email(#[from] crate::mail::MailerError),
 }
 
 impl ResponseError for WebError {
@@ -74,6 +76,7 @@ impl ResponseError for WebError {
             WebErrorKind::Espo(_) => StatusCode::BAD_GATEWAY,
             WebErrorKind::InternalServerError => StatusCode::INTERNAL_SERVER_ERROR,
             WebErrorKind::RsaPkcs8Spki(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            WebErrorKind::Email(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 }

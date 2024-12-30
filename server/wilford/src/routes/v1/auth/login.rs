@@ -15,7 +15,7 @@ use std::collections::HashSet;
 use tap::TapFallible;
 use tracing::{instrument, warn, warn_span, Instrument};
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 pub struct Request {
     authorization: String,
     username: String,
@@ -29,7 +29,7 @@ pub struct Response {
     totp_required: bool,
 }
 
-#[instrument(skip(database, config))]
+#[instrument(skip_all)]
 pub async fn login(
     database: WDatabase,
     config: WConfig,

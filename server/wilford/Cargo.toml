@@ -29,3 +29,4 @@ tracing-error = "0.2.0"
 rsa = "0.9.6"
 bcrypt = "0.16.0"
 rand = "0.8.5"
+mailer = { path = "../mailer" }

@@ -141,4 +141,16 @@ export class User {
         }))
           .map(() => {});
     }
+    
+    static async resetPassword(email: string): Promise<Result<void, ApiError>> {
+        return (await fetch1(`${server}/api/v1/user/password-forgotten`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                email: email,
+            })
+        })).map(() => {})
+    }
 }

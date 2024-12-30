@@ -39,6 +39,12 @@
           variant="tonal">
           Register
         </v-btn>
+        <v-btn
+          to="/password-forgotten"
+          color="primary"
+          variant="tonal">
+          Password forgotten
+        </v-btn>
         <v-spacer></v-spacer>
         <v-btn
           :disabled="(enterUsernamePassword && !usernamePasswordValid) || (enterTotp && !totpValid) || loading"

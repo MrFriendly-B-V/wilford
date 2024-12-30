@@ -18,6 +18,7 @@ use tracing_subscriber::EnvFilter;
 mod authorization;
 mod config;
 mod espo;
+mod mail;
 mod response_types;
 mod routes;
 

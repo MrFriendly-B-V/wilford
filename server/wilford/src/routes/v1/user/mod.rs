@@ -5,6 +5,7 @@ use actix_web::web::ServiceConfig;
 mod change_password;
 mod info;
 mod list;
+mod password_forgotten;
 mod permitted_scopes;
 mod register;
 mod registration_required;
@@ -22,6 +23,10 @@ impl Routable for Router {
                 .route(
                     "/registration-required",
                     web::get().to(registration_required::registration_required),
+                )
+                .route(
+                    "password-forgotten",
+                    web::post().to(password_forgotten::password_forgotten),
                 )
                 .route(
                     "/change-password",

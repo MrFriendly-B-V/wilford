@@ -35,6 +35,23 @@ pub struct Config {
     /// The issuer of OpenID Connect ID tokens.
     /// E.g. `mrfriendly.nl`.
     pub oidc_issuer: String,
+    /// Email configuration.
+    /// If this is not set, no emails will be sent,
+    /// useful for debugging
+    pub email: Option<EmailConfig>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct EmailConfig {
+    /// The SMTP host.
+    /// For Gmail this is `smtp-relay.gmail.com`.
+    pub smtp: String,
+    /// The `From` email address. Use `name <email> syntax.
+    /// E.g. `Wilford <no-reply@mrfriendly.nl>`.
+    pub from: String,
+    /// The path to a Handlebars (`.hbs`) file. This banner
+    /// will be included at the top of every email.
+    pub banner_file: PathBuf,
 }
 
 #[derive(Debug, Deserialize)]

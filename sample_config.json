@@ -17,5 +17,10 @@
   },
   "oidc_signing_key": "../test_oidc_key.pem",
   "oidc_public_key": "../test_oidc_key.pem.pub",
-  "oidc_issuer": "http://localhost:2521"
+  "oidc_issuer": "http://localhost:2521",
+  "email": {
+    "smtp": "smtp-relay.gmail.com",
+    "from": "Wilford <no-reply@array21.dev>",
+    "banner_file": "../email_banner.hbs"
+  }
 }
