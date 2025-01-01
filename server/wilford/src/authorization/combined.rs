@@ -2,7 +2,9 @@ use crate::authorization::espo::{EspoAuthorizationProvider, EspoAuthorizationPro
 use crate::authorization::local_provider::{
     LocalAuthorizationProvider, LocalAuthorizationProviderError,
 };
-use crate::authorization::{AuthorizationError, AuthorizationProvider, UserInformation};
+use crate::authorization::{
+    AuthorizationError, AuthorizationProvider, CredentialsValidationResult, UserInformation,
+};
 use crate::config::{AuthorizationProviderType, Config};
 use database::driver::Database;
 use espocrm_rs::EspoApiClient;
@@ -66,7 +68,8 @@ impl<'a> AuthorizationProvider for CombinedAuthorizationProvider<'a> {
         username: &str,
         password: &str,
         totp_code: Option<&str>,
-    ) -> Result<UserInformation, AuthorizationError<CombinedAuthorizationProviderError>> {
+    ) -> Result<CredentialsValidationResult, AuthorizationError<CombinedAuthorizationProviderError>>
+    {
         Ok(match self {
             Self::Local(credentials_provider) => credentials_provider
                 .validate_credentials(username, password, totp_code)
@@ -91,14 +94,15 @@ impl<'a> AuthorizationProvider for CombinedAuthorizationProvider<'a> {
         &self,
         user_id: &str,
         new_password: &str,
+        require_change: bool,
     ) -> Result<(), AuthorizationError<Self::Error>> {
         Ok(match self {
             Self::Local(local) => local
-                .set_password(user_id, new_password)
+                .set_password(user_id, new_password, require_change)
                 .await
                 .map_err(AuthorizationError::convert)?,
             Self::EspoCrm(espocrm) => espocrm
-                .set_password(user_id, new_password)
+                .set_password(user_id, new_password, require_change)
                 .await
                 .map_err(AuthorizationError::convert)?,
         })

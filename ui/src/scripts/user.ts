@@ -21,7 +21,7 @@ export class User {
         this.isAdmin = isAdmin;
     }
 
-    static async getCurrent(): Promise<User> {
+    static async getCurrent(): Promise<UserInfo> {
         return (await (await fetch1(`${server}/api/v1/user/info`))
           .map1(async (r) => {
               if(r.status == 401) {
@@ -29,8 +29,12 @@ export class User {
                   window.location.href = client.getAuthorizationRedirect();
               }
               
-              const j: _User = await r.json();
-              return new User(j.name, j.espo_user_id, j.is_admin);
+              interface _UserInfo extends _User {
+                  require_password_change: boolean,
+              }
+              
+              const j: _UserInfo = await r.json();
+              return new UserInfo(j.name, j.espo_user_id, j.is_admin, j.require_password_change);
           })
         ).unwrap()
     }
@@ -63,7 +67,7 @@ export class User {
     }
 
     async deletePermittedScope(scope: string) {
-        const r = await fetch(`${server}/api/v1/user/permitted-scopes/remove`, {
+        await fetch(`${server}/api/v1/user/permitted-scopes/remove`, {
             method: 'DELETE',
             body: JSON.stringify({
                 from: this.espoUserId,
@@ -152,5 +156,14 @@ export class User {
                 email: email,
             })
         })).map(() => {})
+    }
+}
+
+export class UserInfo extends User {
+    requirePasswordChange: boolean;
+    
+    constructor(name: string, espoUserId: string, isAdmin: boolean, requirePasswordChange: boolean) {
+        super(name, espoUserId, isAdmin);
+        this.requirePasswordChange = requirePasswordChange;
     }
 }

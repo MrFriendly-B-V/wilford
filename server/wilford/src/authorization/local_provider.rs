@@ -1,4 +1,6 @@
-use crate::authorization::{AuthorizationError, AuthorizationProvider, UserInformation};
+use crate::authorization::{
+    AuthorizationError, AuthorizationProvider, CredentialsValidationResult, UserInformation,
+};
 use bcrypt::{hash_with_result, verify, Version};
 use database::driver::Database;
 use database::user::User;
@@ -36,7 +38,7 @@ impl<'a> AuthorizationProvider for LocalAuthorizationProvider<'a> {
         username: &str,
         password: &str,
         _: Option<&str>,
-    ) -> Result<UserInformation, AuthorizationError<Self::Error>> {
+    ) -> Result<CredentialsValidationResult, AuthorizationError<Self::Error>> {
         // Fetch the user
         let user = User::get_by_email(self.driver, username)
             .await
@@ -56,12 +58,22 @@ impl<'a> AuthorizationProvider for LocalAuthorizationProvider<'a> {
         // Use bcrypt to verify the hash is correct
         let ok = verify(password, &stored_hash).map_err(Self::Error::from)?;
 
+        let require_password_change = user
+            .password_change_required(&self.driver)
+            .await
+            .map_err(Self::Error::from)?
+            // Unwrap is safe, only None if there is no password either.
+            .unwrap();
+
         if ok {
-            Ok(UserInformation {
-                id: user.user_id,
-                email: user.email,
-                name: user.name,
-                is_admin: user.is_admin,
+            Ok(CredentialsValidationResult {
+                user_information: UserInformation {
+                    id: user.user_id,
+                    email: user.email,
+                    name: user.name,
+                    is_admin: user.is_admin,
+                },
+                require_password_change,
             })
         } else {
             Err(AuthorizationError::InvalidCredentials)
@@ -77,6 +89,7 @@ impl<'a> AuthorizationProvider for LocalAuthorizationProvider<'a> {
         &self,
         user_id: &str,
         new_password: &str,
+        require_change: bool,
     ) -> Result<(), AuthorizationError<Self::Error>> {
         // Fetch the user
         let user = User::get_by_id(self.driver, user_id)
@@ -88,7 +101,7 @@ impl<'a> AuthorizationProvider for LocalAuthorizationProvider<'a> {
         let new_password = hash_password(&new_password)?;
 
         // Finally, update the database
-        user.set_password_hash(self.driver, new_password)
+        user.set_password_hash(self.driver, new_password, require_change)
             .await
             .map_err(Self::Error::from)?;
 
@@ -131,7 +144,7 @@ impl<'a> AuthorizationProvider for LocalAuthorizationProvider<'a> {
         let password = hash_password(password)?;
 
         // Set password
-        user.set_password_hash(&self.driver, password)
+        user.set_password_hash(&self.driver, password, false)
             .await
             .map_err(Self::Error::from)?;
 

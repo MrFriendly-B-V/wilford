@@ -99,6 +99,8 @@ export default defineComponent({
 
       const user = await User.getCurrent();
       await user.updatePassword(this.oldPassword!, this.newPassword!);
+
+      this.$emit('complete')
     }
   }
 })

@@ -1,4 +1,6 @@
-use crate::authorization::{AuthorizationError, AuthorizationProvider, UserInformation};
+use crate::authorization::{
+    AuthorizationError, AuthorizationProvider, CredentialsValidationResult, UserInformation,
+};
 use crate::espo::user::{EspoUser, LoginStatus};
 use database::driver::Database;
 use database::user::User;
@@ -45,7 +47,7 @@ impl<'a> AuthorizationProvider for EspoAuthorizationProvider<'a> {
         username: &str,
         password: &str,
         totp_code: Option<&str>,
-    ) -> Result<UserInformation, AuthorizationError<Self::Error>> {
+    ) -> Result<CredentialsValidationResult, AuthorizationError<Self::Error>> {
         // Check the credentials with the EspoCRM instance
         // This will yield the user ID
         let user_id = match EspoUser::try_login(&self.host, username, password, totp_code)
@@ -107,11 +109,14 @@ impl<'a> AuthorizationProvider for EspoAuthorizationProvider<'a> {
             .map_err(|e| AuthorizationError::Other(e.into()))?;
         }
 
-        Ok(UserInformation {
-            id: espo_user.id,
-            name: espo_user.name,
-            email: espo_user.email_address,
-            is_admin: espo_user.user_type.eq("admin"),
+        Ok(CredentialsValidationResult {
+            user_information: UserInformation {
+                id: espo_user.id,
+                name: espo_user.name,
+                email: espo_user.email_address,
+                is_admin: espo_user.user_type.eq("admin"),
+            },
+            require_password_change: false,
         })
     }
 
@@ -122,7 +127,12 @@ impl<'a> AuthorizationProvider for EspoAuthorizationProvider<'a> {
     }
 
     #[instrument(skip_all)]
-    async fn set_password(&self, _: &str, _: &str) -> Result<(), AuthorizationError<Self::Error>> {
+    async fn set_password(
+        &self,
+        _: &str,
+        _: &str,
+        _: bool,
+    ) -> Result<(), AuthorizationError<Self::Error>> {
         Err(AuthorizationError::UnsupportedOperation)
     }
 

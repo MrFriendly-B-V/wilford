@@ -50,7 +50,13 @@ export default defineComponent({
     }
   },
   async mounted() {
-    this.user = await User.getCurrent();
+    const userInfo = await User.getCurrent();
+    if(userInfo.requirePasswordChange) {
+      this.$router.push('/me/require-password-change')
+      return;
+    }
+
+    this.user = userInfo;
     this.loading = false;
   }
 });

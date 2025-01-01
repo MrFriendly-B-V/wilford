@@ -33,7 +33,11 @@ pub async fn password_forgotten(
 
     // Update the password in the database
     let tmp_password = tmp_password();
-    auth_error_to_web_error(provider.set_password(&user.user_id, &tmp_password).await)?;
+    auth_error_to_web_error(
+        provider
+            .set_password(&user.user_id, &tmp_password, true)
+            .await,
+    )?;
 
     // Email the user with their temporary password
     if let Some(email_cfg) = &config.email {

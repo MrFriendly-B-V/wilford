@@ -17,7 +17,18 @@ const routes = [
           {
             path: '/me',
             name: 'me',
-            component: () => import('@/views/me/Me.vue'),
+            children: [
+              {
+                path: '',
+                name: 'me',
+                component: () => import('@/views/me/Me.vue'),
+              },
+              {
+                path: 'require-password-change',
+                name: 'require-password-change',
+                component: () => import('@/views/me/RequirePasswordChange.vue')
+              }
+            ]
           }
         ]
       },

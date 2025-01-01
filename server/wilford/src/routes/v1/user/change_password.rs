@@ -43,7 +43,7 @@ pub async fn change_password(
     // Set new password
     auth_error_to_web_error(
         provider
-            .set_password(&auth.user.user_id, &payload.new_password)
+            .set_password(&auth.user.user_id, &payload.new_password, false)
             .await,
     )?;
 

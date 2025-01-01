@@ -46,7 +46,7 @@ pub async fn login(
     let auth_provider = CombinedAuthorizationProvider::new(&config, &database);
 
     // Check the credentials and handle results
-    let user_information = match auth_provider
+    let validation_result = match auth_provider
         .validate_credentials(
             &payload.username,
             &payload.password,
@@ -102,17 +102,21 @@ pub async fn login(
     // short-circuiting behaviour, the scope check is only evaluated if the user is _not_ an admin.
     // We use the lambda function to reduce the complecity of the if statement.
     let scope_check = || {
-        are_scopes_allowed(&database, &authorization, &user_information)
-            .instrument(warn_span!("scope_check"))
+        are_scopes_allowed(
+            &database,
+            &authorization,
+            &validation_result.user_information,
+        )
+        .instrument(warn_span!("scope_check"))
     };
 
-    if !user_information.is_admin && !scope_check().await? {
+    if !validation_result.user_information.is_admin && !scope_check().await? {
         return Err(WebErrorKind::Forbidden.into());
     }
 
     // Mark the authorization as authorized.
     authorization
-        .set_user_id(&database, &user_information.id)
+        .set_user_id(&database, &validation_result.user_information.id)
         .instrument(warn_span!("authorization::set_user_id"))
         .await
         .tap_err(|e| warn!("{e}"))

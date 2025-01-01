@@ -122,17 +122,20 @@ impl User {
         &self,
         driver: &Database,
         password: P,
+        require_change: bool,
     ) -> Result<()> {
         if self.get_password_hash(&driver).await?.is_some() {
-            sqlx::query("UPDATE user_credentials SET password_hash = ? WHERE user_id = ?")
+            sqlx::query("UPDATE user_credentials SET password_hash = ?, change_required = ? WHERE user_id = ?")
                 .bind(password.as_ref())
+                .bind(require_change)
                 .bind(&self.user_id)
                 .execute(&**driver)
                 .await?;
         } else {
-            sqlx::query("INSERT INTO user_credentials (user_id, password_hash) VALUES (?, ?)")
+            sqlx::query("INSERT INTO user_credentials (user_id, password_hash, change_required) VALUES (?, ?, ?)")
                 .bind(&self.user_id)
                 .bind(password.as_ref())
+                .bind(require_change)
                 .execute(&**driver)
                 .await?;
         }
@@ -144,6 +147,16 @@ impl User {
     pub async fn get_password_hash(&self, driver: &Database) -> Result<Option<String>> {
         Ok(
             sqlx::query_scalar("SELECT password_hash FROM user_credentials WHERE user_id = ?")
+                .bind(&self.user_id)
+                .fetch_optional(&**driver)
+                .await?,
+        )
+    }
+
+    #[instrument]
+    pub async fn password_change_required(&self, driver: &Database) -> Result<Option<bool>> {
+        Ok(
+            sqlx::query_scalar("SELECT change_required FROM user_credentials WHERE user_id = ?")
                 .bind(&self.user_id)
                 .fetch_optional(&**driver)
                 .await?,

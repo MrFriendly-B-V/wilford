@@ -54,6 +54,11 @@ pub struct UserInformation {
     pub email: String,
 }
 
+pub struct CredentialsValidationResult {
+    pub user_information: UserInformation,
+    pub require_password_change: bool,
+}
+
 pub trait AuthorizationProvider {
     /// Error that can be returned by the authorization provider
     type Error: std::error::Error;
@@ -70,7 +75,7 @@ pub trait AuthorizationProvider {
         username: &str,
         password: &str,
         totp_code: Option<&str>,
-    ) -> Result<UserInformation, AuthorizationError<Self::Error>>;
+    ) -> Result<CredentialsValidationResult, AuthorizationError<Self::Error>>;
 
     /// Whether the authorization provider supports changing the user's password.
     fn supports_password_change(&self) -> bool;
@@ -86,6 +91,7 @@ pub trait AuthorizationProvider {
         &self,
         user_id: &str,
         new_password: &str,
+        require_change: bool,
     ) -> Result<(), AuthorizationError<Self::Error>>;
 
     /// Whether the authorization provider supports registering new users.
