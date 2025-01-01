@@ -55,7 +55,12 @@ pub struct UserInformation {
 }
 
 pub struct CredentialsValidationResult {
+    /// Information about the user
     pub user_information: UserInformation,
+    /// Whether the password of the user needs to be changed.
+    /// The frontend will inform the user of this when they navigate to the `/me` page,
+    /// this field is also provided via the `/user/info` endpoint.
+    #[allow(unused)]
     pub require_password_change: bool,
 }
 

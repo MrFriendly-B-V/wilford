@@ -1,10 +1,12 @@
 use crate::authorization::combined::CombinedAuthorizationProvider;
 use crate::authorization::AuthorizationProvider;
+use crate::mail::WilfordMailer;
 use crate::response_types::Empty;
 use crate::routes::auth::Auth;
 use crate::routes::error::{WebErrorKind, WebResult};
 use crate::routes::{auth_error_to_web_error, WConfig, WDatabase};
 use actix_web::web;
+use mailer::{Locale, PasswordChangedData, PasswordChangedMail};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -46,6 +48,20 @@ pub async fn change_password(
             .set_password(&auth.user.user_id, &payload.new_password, false)
             .await,
     )?;
+
+    // Inform user of password change via email
+    if let Some(email_cfg) = &config.email {
+        WilfordMailer::new(email_cfg)
+            .send_email(
+                &auth.user.email,
+                PasswordChangedMail,
+                &PasswordChangedData {
+                    name: auth.user.name,
+                },
+                Locale::En,
+            )
+            .await?;
+    }
 
     Ok(Empty)
 }

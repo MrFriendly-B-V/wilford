@@ -3,30 +3,30 @@
 //! # Example
 //!
 //! ```no_run
-//! # use mailer::email::Mailable;
+//! # use mailer::Mailable;
 //! # async fn main () {
 //! // Get IPV4 address
-//! let addr = mailer::ipv4::get_local_v4().await.unwrap();
+//! let addr = mailer::net::get_local_v4().await.unwrap();
 //! // Establish a connection
-//! let mut connection = mailer::conn::get_connection(
+//! let mut connection = mailer::net::get_connection(
 //!     addr,
 //!     "smtp-relay.gmail.com",
 //!     "array21.dev"
 //! ).await.unwrap();
 //!
 //! // Send a password forgotten email
-//! mailer::email::PasswordForgottenEmail::send(
+//! mailer::PasswordForgottenMail::send(
 //!     &mut connection,
 //!     "receiver@array21.dev",
 //!     "sender@array21.dev",
-//!     &mailer::email::PasswordForgottenData {
+//!     &mailer::PasswordForgottenData {
 //!         name: "Reciever name".to_string(),
 //!         temporary_password: "foobarbaz".to_string(),
 //!     },
-//!     mailer::email::Locale::En,
+//!     mailer::Locale::En,
 //!     // You can specify custom Handlebars partials to be used in the templates!
 //!     vec![
-//!         mailer::email::HbsTemplate {
+//!         mailer::HbsTemplate {
 //!             name: "banner".to_string(),
 //!             content: r#"<div class="banner">My custom banner</div>"#.to_string(),
 //!         }
@@ -35,10 +35,24 @@
 //! # }
 //! ```
 
-pub mod conn;
-pub mod email;
-pub mod error;
-pub mod ipv4;
+mod conn;
+mod email;
+mod error;
+mod ipv4;
+mod locale;
+mod mailer;
+mod template;
+
+pub use email::*;
+pub use error::*;
+pub use locale::Locale;
+pub use template::HbsTemplate;
+
+// Bundle these two together in the public API
+pub mod net {
+    pub use crate::conn::get_connection;
+    pub use crate::ipv4::get_local_v4;
+}
 
 #[cfg(test)]
 pub(crate) mod test {

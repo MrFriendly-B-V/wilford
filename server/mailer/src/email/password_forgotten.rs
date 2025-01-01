@@ -1,7 +1,8 @@
-use crate::email::{Locale, Mailable};
+use crate::email::Mailable;
+use crate::locale::Locale;
 use serde::Serialize;
 
-pub struct PasswordForgottenEmail;
+pub struct PasswordForgottenMail;
 
 #[derive(Serialize)]
 pub struct PasswordForgottenData {
@@ -9,7 +10,7 @@ pub struct PasswordForgottenData {
     pub temporary_password: String,
 }
 
-impl Mailable for PasswordForgottenEmail {
+impl Mailable for PasswordForgottenMail {
     type Data = PasswordForgottenData;
 
     fn template_name() -> &'static str {
@@ -26,13 +27,13 @@ impl Mailable for PasswordForgottenEmail {
 
 #[cfg(test)]
 mod test {
-    use crate::email::password_forgotten::{PasswordForgottenData, PasswordForgottenEmail};
+    use crate::email::password_forgotten::{PasswordForgottenData, PasswordForgottenMail};
     use crate::email::{Locale, Mailable};
     use crate::test::{banner_partial, connection};
 
     #[tokio::test]
     async fn password_forgotten() {
-        PasswordForgottenEmail::send(
+        PasswordForgottenMail::send(
             &mut connection().await,
             "t.debruijn@array21.dev",
             "t.debruijn@array21.dev",

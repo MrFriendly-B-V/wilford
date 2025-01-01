@@ -6,7 +6,7 @@ use crate::routes::error::{WebErrorKind, WebResult};
 use crate::routes::{auth_error_to_web_error, WConfig, WDatabase};
 use actix_web::web;
 use database::user::User;
-use mailer::email::{Locale, PasswordForgottenData, PasswordForgottenEmail};
+use mailer::{Locale, PasswordForgottenData, PasswordForgottenMail};
 use rand::Rng;
 use serde::Deserialize;
 
@@ -44,7 +44,7 @@ pub async fn password_forgotten(
         WilfordMailer::new(email_cfg)
             .send_email(
                 &user.email,
-                PasswordForgottenEmail,
+                PasswordForgottenMail,
                 &PasswordForgottenData {
                     name: user.name,
                     temporary_password: tmp_password,
@@ -57,6 +57,7 @@ pub async fn password_forgotten(
     Ok(Empty)
 }
 
+/// Generate a temporary password
 fn tmp_password() -> String {
     rand::thread_rng()
         .sample_iter(rand::distributions::Alphanumeric)

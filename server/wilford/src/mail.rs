@@ -1,5 +1,5 @@
 use crate::config::EmailConfig;
-use mailer::email::{HbsTemplate, Locale, Mailable};
+use mailer::{HbsTemplate, Locale, Mailable};
 use std::path::Path;
 use thiserror::Error;
 use tokio::fs;
@@ -8,7 +8,7 @@ use tokio::io::AsyncReadExt;
 #[derive(Debug, Error)]
 pub enum MailerError {
     #[error(transparent)]
-    Email(#[from] mailer::error::MailerError),
+    Email(#[from] mailer::MailerError),
     #[error(transparent)]
     Io(#[from] std::io::Error),
 }
@@ -43,9 +43,9 @@ impl<'a> WilfordMailer<'a> {
         M: Mailable,
     {
         // Establish the SMTP connection
-        let ipv4 = mailer::ipv4::get_local_v4().await?;
+        let ipv4 = mailer::net::get_local_v4().await?;
         let mut conn =
-            mailer::conn::get_connection(ipv4, &self.config.smtp, &self.get_ehlo_domain()).await?;
+            mailer::net::get_connection(ipv4, &self.config.smtp, &self.get_ehlo_domain()).await?;
 
         // Send the email
         M::send(
