@@ -134,4 +134,28 @@ impl<'a> AuthorizationProvider for CombinedAuthorizationProvider<'a> {
                 .map_err(AuthorizationError::convert)?,
         })
     }
+
+    fn supports_email_change(&self) -> bool {
+        match self {
+            Self::Local(v) => v.supports_email_change(),
+            Self::EspoCrm(v) => v.supports_email_change(),
+        }
+    }
+
+    async fn set_email(
+        &self,
+        user_id: &str,
+        new_email: &str,
+    ) -> Result<(), AuthorizationError<Self::Error>> {
+        match self {
+            Self::Local(v) => v
+                .set_email(user_id, new_email)
+                .await
+                .map_err(AuthorizationError::convert),
+            Self::EspoCrm(v) => v
+                .set_email(user_id, new_email)
+                .await
+                .map_err(AuthorizationError::convert),
+        }
+    }
 }

@@ -2,6 +2,7 @@ use actix_route_config::Routable;
 use actix_web::web;
 use actix_web::web::ServiceConfig;
 
+mod change_email;
 mod change_password;
 mod info;
 mod list;
@@ -32,6 +33,7 @@ impl Routable for Router {
                     "/change-password",
                     web::post().to(change_password::change_password),
                 )
+                .route("/change-email", web::post().to(change_email::change_email))
                 .route(
                     "/supports-password-change",
                     web::get().to(supports_password_change::supports_password_change),

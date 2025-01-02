@@ -151,4 +151,13 @@ impl<'a> AuthorizationProvider for EspoAuthorizationProvider<'a> {
     ) -> Result<UserInformation, AuthorizationError<Self::Error>> {
         Err(AuthorizationError::UnsupportedOperation)
     }
+
+    fn supports_email_change(&self) -> bool {
+        false
+    }
+
+    #[instrument(skip_all)]
+    async fn set_email(&self, _: &str, _: &str) -> Result<(), AuthorizationError<Self::Error>> {
+        Err(AuthorizationError::UnsupportedOperation)
+    }
 }

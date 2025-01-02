@@ -117,6 +117,16 @@ impl User {
         Ok(())
     }
 
+    pub async fn set_email(&self, driver: &Database, email: &str) -> Result<()> {
+        sqlx::query("UPDATE users SET email = ? WHERE user_id = ?")
+            .bind(email)
+            .bind(&self.user_id)
+            .execute(&**driver)
+            .await?;
+
+        Ok(())
+    }
+
     #[instrument(skip(password))]
     pub async fn set_password_hash<P: AsRef<str> + Debug>(
         &self,

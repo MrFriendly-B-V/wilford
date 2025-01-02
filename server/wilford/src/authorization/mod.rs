@@ -106,7 +106,7 @@ pub trait AuthorizationProvider {
     /// Implementations do not have to support this operation, check this with [Self::supports_registration].
     ///
     /// # Errors
-    /// - If the operation is not supports
+    /// - If the operation is not supported
     /// - If the underlying operation fails
     /// - If a user with the given e-mail address already exists
     async fn register_user(
@@ -116,4 +116,19 @@ pub trait AuthorizationProvider {
         password: &str,
         is_admin: bool,
     ) -> Result<UserInformation, AuthorizationError<Self::Error>>;
+
+    /// Whether the provider supports changing the email address of the user.
+    fn supports_email_change(&self) -> bool;
+
+    /// Change the email address of the user.
+    /// Implementations do not have to support this operation, check this with [Self::supports_email_change]
+    ///
+    /// # Errors
+    /// - If the operation is not supported
+    /// - IF the underlying operation fails
+    async fn set_email(
+        &self,
+        user_id: &str,
+        new_email: &str,
+    ) -> Result<(), AuthorizationError<Self::Error>>;
 }

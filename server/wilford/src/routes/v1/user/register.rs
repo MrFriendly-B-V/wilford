@@ -52,6 +52,8 @@ pub async fn register(
     )?
     .unwrap_left();
 
+    // TODO registration email and email verification
+
     Ok(web::Json(Response {
         user_id: new_user.id,
     }))

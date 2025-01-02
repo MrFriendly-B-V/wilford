@@ -155,6 +155,28 @@ impl<'a> AuthorizationProvider for LocalAuthorizationProvider<'a> {
             is_admin,
         })
     }
+
+    fn supports_email_change(&self) -> bool {
+        true
+    }
+
+    #[instrument(skip(self))]
+    async fn set_email(
+        &self,
+        user_id: &str,
+        new_email: &str,
+    ) -> Result<(), AuthorizationError<Self::Error>> {
+        let user = User::get_by_id(&self.driver, user_id)
+            .await
+            .map_err(Self::Error::from)?
+            .ok_or(AuthorizationError::InvalidCredentials)?;
+
+        user.set_email(&self.driver, new_email)
+            .await
+            .map_err(Self::Error::from)?;
+
+        Ok(())
+    }
 }
 
 /// Hash the password.

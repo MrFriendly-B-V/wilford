@@ -1,6 +1,8 @@
+mod email_changed;
 mod password_changed;
 mod password_forgotten;
 
+pub use email_changed::*;
 pub use password_changed::*;
 pub use password_forgotten::*;
 
