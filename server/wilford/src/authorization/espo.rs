@@ -3,7 +3,7 @@ use crate::authorization::{
 };
 use crate::espo::user::{EspoUser, LoginStatus};
 use database::driver::Database;
-use database::user::User;
+use database::user::{Locale, User};
 use espocrm_rs::EspoApiClient;
 use thiserror::Error;
 use tracing::instrument;
@@ -104,6 +104,8 @@ impl<'a> AuthorizationProvider for EspoAuthorizationProvider<'a> {
                 espo_user.name.clone(),
                 espo_user.email_address.clone(),
                 is_admin,
+                Locale::Nl,
+                false,
             )
             .await
             .map_err(|e| AuthorizationError::Other(e.into()))?;
@@ -148,6 +150,7 @@ impl<'a> AuthorizationProvider for EspoAuthorizationProvider<'a> {
         _: &str,
         _: &str,
         _: bool,
+        _: Locale,
     ) -> Result<UserInformation, AuthorizationError<Self::Error>> {
         Err(AuthorizationError::UnsupportedOperation)
     }

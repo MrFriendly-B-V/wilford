@@ -3,7 +3,7 @@ use crate::authorization::{
 };
 use bcrypt::{hash_with_result, verify, Version};
 use database::driver::Database;
-use database::user::User;
+use database::user::{Locale, User};
 use rand::Rng;
 use tap::TapOptional;
 use thiserror::Error;
@@ -72,6 +72,7 @@ impl<'a> AuthorizationProvider for LocalAuthorizationProvider<'a> {
                     email: user.email,
                     name: user.name,
                     is_admin: user.is_admin,
+                    email_verification_code: None,
                 },
                 require_password_change,
             })
@@ -119,6 +120,7 @@ impl<'a> AuthorizationProvider for LocalAuthorizationProvider<'a> {
         email: &str,
         password: &str,
         is_admin: bool,
+        locale: Locale,
     ) -> Result<UserInformation, AuthorizationError<Self::Error>> {
         // Check that the user does not already exist
         User::get_by_email(self.driver, email)
@@ -130,12 +132,14 @@ impl<'a> AuthorizationProvider for LocalAuthorizationProvider<'a> {
         let user_id = gen_user_id();
 
         // Create the user in the database
-        let user = User::new(
+        let (user, verification) = User::new(
             &self.driver,
             user_id.clone(),
             name.to_string(),
             email.to_string(),
             is_admin,
+            locale,
+            true,
         )
         .await
         .map_err(Self::Error::from)?;
@@ -153,6 +157,7 @@ impl<'a> AuthorizationProvider for LocalAuthorizationProvider<'a> {
             name: name.to_string(),
             email: email.to_string(),
             is_admin,
+            email_verification_code: verification.map(|v| v.verification_code),
         })
     }
 

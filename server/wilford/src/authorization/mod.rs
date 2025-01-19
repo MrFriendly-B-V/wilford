@@ -2,6 +2,7 @@ pub mod combined;
 pub mod espo;
 pub mod local_provider;
 
+use database::user::Locale;
 use std::error::Error;
 use std::fmt::Debug;
 use thiserror::Error;
@@ -52,6 +53,8 @@ pub struct UserInformation {
     /// The email address of the user.
     #[allow(unused)]
     pub email: String,
+    /// The code required to verify the user's email, if required
+    pub email_verification_code: Option<String>,
 }
 
 pub struct CredentialsValidationResult {
@@ -115,6 +118,7 @@ pub trait AuthorizationProvider {
         email: &str,
         password: &str,
         is_admin: bool,
+        locale: Locale,
     ) -> Result<UserInformation, AuthorizationError<Self::Error>>;
 
     /// Whether the provider supports changing the email address of the user.

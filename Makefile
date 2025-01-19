@@ -12,10 +12,12 @@ help:
 	echo "- upload-server 	: Build and upload the server Docker image"
 	echo "- upload-docs		: Build and upload the docs Docker image"
 	echo "- upload-ui	 	: Build and upload the ui Docker image"
+	echo "- dev 			: Run all applications locally in developmer mode"
+	echo "- dev-ide			: Prepares the environment and shows you how to run the programs from your IDE"
 
 test_oidc_key.pem:
 	openssl genrsa -out ./test_oidc_key.pem 4096
-	
+
 test_oidc_key.pem.pub: test_oidc_key.pem
 	openssl rsa -in ./test_oidc_key.pem -pubout -outform PEM -out ./test_oidc_key.pem.pub
 
@@ -33,6 +35,20 @@ up: test_oidc_key.pem test_oidc_key.pem.pub config_docker.json
 	echo "Wilford Docs available at	http://localhost:2523"
 	echo "EspoCRM UI availabel at 	http://localhost:2524"
 	echo "If this is the first run, please configure EspoCRM and Wilford."
+
+.PHONY: dev-ide
+dev-ide: test_oidc_key.pem test_oidc_key.pem.pub config.json
+	# Database
+	docker compose up -d mariadb-wilford
+	echo "Waiting for Database to start..."
+
+	echo "Start the server with the following environmental variables set:"
+	echo "- RUST_LOG=INFO,wilford=TRACE"
+	echo "- CONFIG_PATH=$(shell pwd)/config.json"
+
+	echo "Then start the server with:"
+	echo "cargo run -p wilford"
+
 
 .PHONY: dev
 dev: test_oidc_key.pem test_oidc_key.pem.pub config.json ui/node_modules

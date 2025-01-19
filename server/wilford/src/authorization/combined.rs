@@ -7,6 +7,7 @@ use crate::authorization::{
 };
 use crate::config::{AuthorizationProviderType, Config};
 use database::driver::Database;
+use database::user::Locale;
 use espocrm_rs::EspoApiClient;
 use std::fmt::Debug;
 use thiserror::Error;
@@ -122,14 +123,15 @@ impl<'a> AuthorizationProvider for CombinedAuthorizationProvider<'a> {
         email: &str,
         password: &str,
         is_admin: bool,
+        locale: Locale,
     ) -> Result<UserInformation, AuthorizationError<Self::Error>> {
         Ok(match self {
             Self::Local(credentials_provider) => credentials_provider
-                .register_user(name, email, password, is_admin)
+                .register_user(name, email, password, is_admin, locale)
                 .await
                 .map_err(AuthorizationError::convert)?,
             Self::EspoCrm(espocrm) => espocrm
-                .register_user(name, email, password, is_admin)
+                .register_user(name, email, password, is_admin, locale)
                 .await
                 .map_err(AuthorizationError::convert)?,
         })
