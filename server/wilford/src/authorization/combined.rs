@@ -145,7 +145,7 @@ impl<'a> AuthorizationProvider for CombinedAuthorizationProvider<'a> {
     }
 
     async fn set_email(
-        &self,
+        &mut self,
         user_id: &str,
         new_email: &str,
     ) -> Result<(), AuthorizationError<Self::Error>> {

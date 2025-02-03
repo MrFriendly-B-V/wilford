@@ -1,5 +1,5 @@
 use crate::email::Mailable;
-use crate::locale::Locale;
+use database::user::Locale;
 use serde::Serialize;
 
 pub struct PasswordForgottenMail;
@@ -28,8 +28,9 @@ impl Mailable for PasswordForgottenMail {
 #[cfg(test)]
 mod test {
     use crate::email::password_forgotten::{PasswordForgottenData, PasswordForgottenMail};
-    use crate::email::{Locale, Mailable};
+    use crate::email::Mailable;
     use crate::test::{banner_partial, connection};
+    use database::user::Locale;
 
     #[tokio::test]
     async fn password_forgotten() {

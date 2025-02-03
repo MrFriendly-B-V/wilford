@@ -1,0 +1,14 @@
+<html lang="nl">
+{{> header }}
+<body>
+<div class="container">
+    {{> banner }}
+
+    <p>Hi {{ name }}, </p>
+    <p>
+        Please verify your email address with the following link:
+        <a href="{{ email_verify_link }}">{{ email_verify_link }}</a>
+    </p>
+</div>
+</body>
+</html>

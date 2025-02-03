@@ -9,7 +9,7 @@ use crate::routes::error::{WebErrorKind, WebResult};
 use actix_web::web;
 use database::driver::Database;
 use database::oauth2_client::OAuth2PendingAuthorization;
-use database::user::User;
+use database::user::{SetEmailAddressError, User};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use tap::TapFallible;
@@ -90,6 +90,10 @@ pub async fn login(
                     LocalAuthorizationProviderError::Hashing(_) => {
                         WebErrorKind::InternalServerError.into()
                     }
+                    LocalAuthorizationProviderError::SetEmailError(e) => match e {
+                        SetEmailAddressError::NoEmail => WebErrorKind::BadRequest.into(),
+                        SetEmailAddressError::Sqlx(e) => e.into(),
+                    },
                 },
             });
         }

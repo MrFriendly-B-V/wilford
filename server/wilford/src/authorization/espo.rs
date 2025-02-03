@@ -77,7 +77,7 @@ impl<'a> AuthorizationProvider for EspoAuthorizationProvider<'a> {
             .await
             .map_err(|e| AuthorizationError::Other(e.into()))?;
 
-        if let Some(db_user) = db_user {
+        if let Some(mut db_user) = db_user {
             // Make sure the database correctly reflects the user's information
 
             // Admin status
@@ -116,6 +116,7 @@ impl<'a> AuthorizationProvider for EspoAuthorizationProvider<'a> {
                 id: espo_user.id,
                 name: espo_user.name,
                 email: espo_user.email_address,
+                email_verification: None,
                 is_admin: espo_user.user_type.eq("admin"),
             },
             require_password_change: false,
@@ -160,7 +161,7 @@ impl<'a> AuthorizationProvider for EspoAuthorizationProvider<'a> {
     }
 
     #[instrument(skip_all)]
-    async fn set_email(&self, _: &str, _: &str) -> Result<(), AuthorizationError<Self::Error>> {
+    async fn set_email(&mut self, _: &str, _: &str) -> Result<(), AuthorizationError<Self::Error>> {
         Err(AuthorizationError::UnsupportedOperation)
     }
 }

@@ -1,6 +1,8 @@
+use crate::config::Config;
 use actix_route_config::Routable;
 use actix_web::web;
 use actix_web::web::ServiceConfig;
+use database::user::UserEmailVerification;
 
 mod change_email;
 mod change_password;
@@ -11,6 +13,7 @@ mod permitted_scopes;
 mod register;
 mod registration_required;
 mod supports_password_change;
+mod verify_email;
 
 pub struct Router;
 
@@ -38,7 +41,17 @@ impl Routable for Router {
                     "/supports-password-change",
                     web::get().to(supports_password_change::supports_password_change),
                 )
-                .route("/register", web::post().to(register::register)),
+                .route("/register", web::post().to(register::register))
+                .route("/verify-email", web::post().to(verify_email::verify_email)),
         );
     }
+}
+
+fn email_verify_link(config: &Config, verification: &UserEmailVerification) -> String {
+    format!(
+        "{}?code={}&user_id={}",
+        &config.http.ui_email_verification_path,
+        &verification.verification_code,
+        &verification.user_id
+    )
 }

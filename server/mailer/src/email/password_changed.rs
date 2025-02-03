@@ -1,5 +1,5 @@
 use crate::email::Mailable;
-use crate::locale::Locale;
+use database::user::Locale;
 use serde::Serialize;
 
 pub struct PasswordChangedMail;

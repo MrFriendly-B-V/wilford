@@ -2,7 +2,7 @@ pub mod combined;
 pub mod espo;
 pub mod local_provider;
 
-use database::user::Locale;
+use database::user::{Locale, UserEmailVerification};
 use std::error::Error;
 use std::fmt::Debug;
 use thiserror::Error;
@@ -53,8 +53,9 @@ pub struct UserInformation {
     /// The email address of the user.
     #[allow(unused)]
     pub email: String,
-    /// The code required to verify the user's email, if required
-    pub email_verification_code: Option<String>,
+    #[allow(unused)]
+    /// The verification required to verify the user's email, if required
+    pub email_verification: Option<UserEmailVerification>,
 }
 
 pub struct CredentialsValidationResult {
@@ -131,7 +132,7 @@ pub trait AuthorizationProvider {
     /// - If the operation is not supported
     /// - IF the underlying operation fails
     async fn set_email(
-        &self,
+        &mut self,
         user_id: &str,
         new_email: &str,
     ) -> Result<(), AuthorizationError<Self::Error>>;

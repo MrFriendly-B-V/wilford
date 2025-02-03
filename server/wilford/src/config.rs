@@ -67,6 +67,9 @@ pub enum AuthorizationProviderType {
 pub struct HttpConfig {
     /// The URL at which the frontend's login page can be found.
     pub ui_login_path: String,
+    /// The URL at which the frontend's email verification page can be found.
+    /// The server will append a `code` and a `user_id` query parameter to the URL
+    pub ui_email_verification_path: String,
     /// The URL at which the OAuth2 authorization endpoint can be found.
     /// Should point to the route `/oauth/authorize`.
     pub authorization_endpoint: String,

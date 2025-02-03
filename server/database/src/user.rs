@@ -1,9 +1,9 @@
-use crate::driver::{Database, Error};
+use crate::driver::Database;
 use crate::impl_enum_type;
 use rand::Rng;
+use serde::{Deserialize, Serialize};
 use sqlx::{Decode, Encode, FromRow, Result};
 use std::fmt::Debug;
-use std::ptr::addr_eq;
 use thiserror::Error;
 use time::OffsetDateTime;
 use tracing::instrument;
@@ -33,7 +33,7 @@ pub struct UserEmailVerification {
 }
 
 /// The preferred language of the user
-#[derive(Debug, Clone, Encode, Decode)]
+#[derive(Debug, Clone, Copy, Encode, Decode, Deserialize, Serialize)]
 pub enum Locale {
     En,
     Nl,
@@ -463,6 +463,26 @@ impl User {
             .await?;
 
         Ok(())
+    }
+
+    /// Fetch an unverified email address by the verification provided to the user.
+    ///
+    /// # Errors
+    ///
+    /// If the query fails
+    #[instrument(skip(driver))]
+    pub async fn get_address_by_verification_code(
+        &self,
+        verifcation_code: &str,
+        driver: &Database,
+    ) -> Result<Option<UserEmailVerification>> {
+        Ok(sqlx::query_as(
+            "SELECT * FROM user_email_verifications WHERE user_id = ? AND verification_code = ?",
+        )
+        .bind(&self.user_id)
+        .bind(verifcation_code)
+        .fetch_optional(&**driver)
+        .await?)
     }
 }
 

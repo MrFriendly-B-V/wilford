@@ -15,6 +15,7 @@ use crate::authorization::local_provider::LocalAuthorizationProviderError;
 use crate::authorization::AuthorizationError;
 use crate::routes::error::{WebError, WebErrorKind};
 pub use appdata::*;
+use database::user::SetEmailAddressError;
 
 pub struct Router;
 
@@ -60,6 +61,10 @@ fn auth_error_to_web_error<T>(
                 LocalAuthorizationProviderError::Hashing(_) => {
                     WebErrorKind::InternalServerError.into()
                 }
+                LocalAuthorizationProviderError::SetEmailError(e) => match e {
+                    SetEmailAddressError::NoEmail => WebErrorKind::BadRequest.into(),
+                    SetEmailAddressError::Sqlx(e) => e.into(),
+                },
             },
             CombinedAuthorizationProviderError::EspoCrm(e) => match e {
                 EspoAuthorizationProviderError::Database(e) => e.into(),

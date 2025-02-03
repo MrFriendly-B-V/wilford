@@ -20,6 +20,8 @@ pub enum LocalAuthorizationProviderError {
     Database(#[from] database::driver::Error),
     #[error(transparent)]
     Hashing(#[from] bcrypt::BcryptError),
+    #[error(transparent)]
+    SetEmailError(#[from] database::user::SetEmailAddressError),
 }
 
 impl<'a> LocalAuthorizationProvider<'a> {
@@ -72,7 +74,7 @@ impl<'a> AuthorizationProvider for LocalAuthorizationProvider<'a> {
                     email: user.email,
                     name: user.name,
                     is_admin: user.is_admin,
-                    email_verification_code: None,
+                    email_verification: None,
                 },
                 require_password_change,
             })
@@ -157,7 +159,7 @@ impl<'a> AuthorizationProvider for LocalAuthorizationProvider<'a> {
             name: name.to_string(),
             email: email.to_string(),
             is_admin,
-            email_verification_code: verification.map(|v| v.verification_code),
+            email_verification: verification,
         })
     }
 
@@ -167,11 +169,11 @@ impl<'a> AuthorizationProvider for LocalAuthorizationProvider<'a> {
 
     #[instrument(skip(self))]
     async fn set_email(
-        &self,
+        &mut self,
         user_id: &str,
         new_email: &str,
     ) -> Result<(), AuthorizationError<Self::Error>> {
-        let user = User::get_by_id(&self.driver, user_id)
+        let mut user = User::get_by_id(&self.driver, user_id)
             .await
             .map_err(Self::Error::from)?
             .ok_or(AuthorizationError::InvalidCredentials)?;

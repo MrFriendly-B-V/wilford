@@ -5,8 +5,8 @@ use crate::response_types::Empty;
 use crate::routes::error::{WebErrorKind, WebResult};
 use crate::routes::{auth_error_to_web_error, WConfig, WDatabase};
 use actix_web::web;
-use database::user::User;
-use mailer::{Locale, PasswordForgottenData, PasswordForgottenMail};
+use database::user::{Locale, User};
+use mailer::{PasswordForgottenData, PasswordForgottenMail};
 use rand::Rng;
 use serde::Deserialize;
 

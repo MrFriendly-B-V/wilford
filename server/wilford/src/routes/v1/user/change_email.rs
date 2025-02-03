@@ -4,10 +4,12 @@ use crate::mail::WilfordMailer;
 use crate::response_types::Empty;
 use crate::routes::auth::Auth;
 use crate::routes::error::{WebErrorKind, WebResult};
+use crate::routes::v1::user::email_verify_link;
 use crate::routes::{auth_error_to_web_error, WConfig, WDatabase};
 use actix_web::web;
-use mailer::{EmailChangedData, EmailChangedMail, Locale};
+use mailer::{VerifyEmailData, VerifyEmailEmail};
 use serde::Deserialize;
+use tracing::info;
 
 #[derive(Deserialize)]
 pub struct Request {
@@ -33,6 +35,8 @@ pub async fn change_email(
         return Err(WebErrorKind::Unsupported.into());
     }
 
+    let payload = payload.into_inner();
+
     // Validate password
     auth_error_to_web_error(
         provider
@@ -40,24 +44,26 @@ pub async fn change_email(
             .await,
     )?;
 
-    // Change email
-    auth_error_to_web_error(provider.set_email(&auth.user_id, &payload.new_email).await)?;
+    let verification = auth.user.update_email(&database, payload.new_email).await?;
 
-    // Send email
-    if let Some(email_cfg) = &config.email {
-        // Old email
-        WilfordMailer::new(email_cfg)
+    if let Some(email_config) = &config.email {
+        WilfordMailer::new(email_config)
             .send_email(
                 &auth.user.email,
-                EmailChangedMail,
-                &EmailChangedData {
+                VerifyEmailEmail,
+                &VerifyEmailData {
                     name: auth.user.name,
+                    email_verify_link: email_verify_link(&config, &verification),
                 },
-                Locale::En,
+                auth.user.locale,
             )
             .await?;
-
-        // TODO: Verifaction email to new email
+    } else {
+        info!("No email configuration provided");
+        info!(
+            "User email address pending for verification. Use the following URL to verify it: {}",
+            email_verify_link(&config, &verification)
+        );
     }
 
     Ok(Empty)

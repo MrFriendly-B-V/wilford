@@ -6,7 +6,8 @@ use crate::routes::auth::Auth;
 use crate::routes::error::{WebErrorKind, WebResult};
 use crate::routes::{auth_error_to_web_error, WConfig, WDatabase};
 use actix_web::web;
-use mailer::{Locale, PasswordChangedData, PasswordChangedMail};
+use database::user::Locale;
+use mailer::{PasswordChangedData, PasswordChangedMail};
 use serde::Deserialize;
 
 #[derive(Deserialize)]

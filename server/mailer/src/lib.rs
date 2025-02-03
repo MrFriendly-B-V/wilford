@@ -23,7 +23,7 @@
 //!         name: "Reciever name".to_string(),
 //!         temporary_password: "foobarbaz".to_string(),
 //!     },
-//!     mailer::Locale::En,
+//!     database::user::Locale::En,
 //!     // You can specify custom Handlebars partials to be used in the templates!
 //!     vec![
 //!         mailer::HbsTemplate {
@@ -45,7 +45,6 @@ mod template;
 
 pub use email::*;
 pub use error::*;
-pub use locale::Locale;
 pub use template::HbsTemplate;
 
 // Bundle these two together in the public API

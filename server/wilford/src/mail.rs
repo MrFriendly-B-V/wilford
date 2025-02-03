@@ -1,5 +1,6 @@
 use crate::config::EmailConfig;
-use mailer::{HbsTemplate, Locale, Mailable};
+use database::user::Locale;
+use mailer::{HbsTemplate, Mailable};
 use std::path::Path;
 use thiserror::Error;
 use tokio::fs;

@@ -1,14 +1,17 @@
 mod email_changed;
 mod password_changed;
 mod password_forgotten;
+mod verify_email;
 
 pub use email_changed::*;
 pub use password_changed::*;
 pub use password_forgotten::*;
+pub use verify_email::*;
 
 use crate::error::Result;
 use crate::mailer::Mailer;
-use crate::{HbsTemplate, Locale};
+use crate::HbsTemplate;
+use database::user::Locale;
 use lettre::transport::smtp::client::AsyncSmtpConnection;
 use serde::Serialize;
 use std::future::Future;
@@ -45,7 +48,7 @@ pub trait Mailable {
         locale: Locale,
         extra_partials: Vec<HbsTemplate>,
     ) -> impl Future<Output = Result<()>> + Send + Sync {
-        async {
+        async move {
             Mailer::send(
                 connection,
                 to,

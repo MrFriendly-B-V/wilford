@@ -1,5 +1,6 @@
-use crate::locale::Locale;
+use crate::locale::localize_template_name;
 use crate::template::{HbsTemplate, TemplateEngine};
+use database::user::Locale;
 use lettre::message::{Mailbox, MessageBuilder, SinglePart};
 use lettre::transport::smtp::client::AsyncSmtpConnection;
 use lettre::Message;
@@ -27,7 +28,7 @@ impl Mailer {
     ) -> crate::error::Result<()> {
         // Render the body
         let handlebars = TemplateEngine::new(extra_partials)?;
-        let body_html = handlebars.render(&locale.template_name_localized(template_name), data)?;
+        let body_html = handlebars.render(&localize_template_name(&locale, template_name), data)?;
 
         // Create the message
         let msg =

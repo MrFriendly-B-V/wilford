@@ -13,3 +13,4 @@ futures-util = "0.3.31"
 tracing = "0.1.41"
 serde = { version = "1.0.217", features = ["derive"] }
 include_directory = "0.1.1"
+database = { path = "../database" }
