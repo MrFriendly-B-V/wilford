@@ -100,22 +100,27 @@ pub async fn login(
         Ok(user_information) => user_information,
     };
 
+    // Get the user in the database
+    let user = User::get_by_id(&database, &validation_result.user_information.id)
+        .await?
+        .ok_or(WebErrorKind::InternalServerError)?;
+
     // Check if any scopes were requested that the user should not be allowed to access
     // This check is skipped for admins.
     // For optimizations, we evaluate the is_admin check first, followed by the scope check. Due to
     // short-circuiting behaviour, the scope check is only evaluated if the user is _not_ an admin.
     // We use the lambda function to reduce the complecity of the if statement.
     let scope_check = || {
-        are_scopes_allowed(
-            &database,
-            &authorization,
-            &validation_result.user_information,
-        )
-        .instrument(warn_span!("scope_check"))
+        are_scopes_allowed(&database, &authorization, &user).instrument(warn_span!("scope_check"))
     };
 
     if !validation_result.user_information.is_admin && !scope_check().await? {
         return Err(WebErrorKind::Forbidden.into());
+    }
+
+    // Check if the email address is verified
+    if !user.is_email_verified(&database).await? {
+        return Err(WebErrorKind::EmailNotVerified.into());
     }
 
     // Mark the authorization as authorized.
@@ -136,13 +141,8 @@ pub async fn login(
 async fn are_scopes_allowed(
     database: &Database,
     authorization: &OAuth2PendingAuthorization,
-    user_information: &UserInformation,
+    user: &User,
 ) -> WebResult<bool> {
-    // Get the user in the database
-    let user = User::get_by_id(&database, &user_information.id)
-        .await?
-        .ok_or(WebErrorKind::InternalServerError)?;
-
     // Check which scopes are granted to the user
     let permitted_scopes = HashSet::from_iter(user.list_permitted_scopes(&database).await?);
 

@@ -60,10 +60,12 @@
 </template>
 
 <script lang="ts">
-import {InputValidationRules, server} from "@/main";
+import {InputValidationRules} from "@/main";
 import {defineComponent} from 'vue';
 import ErrorBanner from "@/components/banners/ErrorBanner.vue";
 import {ClientInfo} from "@/scripts/clients";
+import {User} from "@/scripts/user";
+import {Auth, LoginStatus} from "@/scripts/auth";
 
 interface Data {
   error?: string;
@@ -104,6 +106,7 @@ export default defineComponent({
   },
   async mounted() {
     await this.checkAuthorizationPresent();
+    await this.registrationRequired();
   },
   computed: {
     /**
@@ -122,59 +125,56 @@ export default defineComponent({
         const client = await ClientInfo.getInternal();
         window.location.href = client.getAuthorizationRedirect();
       }
-
+    },
+    async registrationRequired() {
+      const requireRegister = await User.isFirstRegister();
+      if(requireRegister.isOk()) {
+        if(requireRegister.unwrap()) {
+          this.$router.replace('/register');
+        }
+      }
     },
     async login() {
-      const r = await fetch(`${server}/api/v1/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          'username': this.username,
-          'password': this.password,
-          'totp_code': this.totpCode,
-          'authorization': this.authorizationCode,
-        })
-      });
+      this.loading = true;
 
-      switch (r.status) {
-        case 200:
+      const loginResult = await Auth.login(
+        this.username!,
+        this.password!,
+        this.authorizationCode!,
+        this.totpCode
+      );
 
-        interface Response {
-          status: boolean,
-          totp_required: boolean
-        }
+      this.loading = false;
 
-          const v: Response = await r.json();
-
-          if (!v.status && !v.totp_required) {
+      if (loginResult.isOk()) {
+        switch (loginResult.unwrap()) {
+          case LoginStatus.OK: {
+            await this.$router.push(`/authorize?authorization=${this.authorizationCode}`);
+            return;
+          }
+          case LoginStatus.INVALID_CREDENTIALS: {
             this.error = "Invalid username or password";
             break;
           }
-
-          if (!v.status && v.totp_required) {
+          case LoginStatus.TOTP_REQUIRED: {
             this.enterTotp = true;
             this.enterUsernamePassword = false;
             break;
           }
-
-          if (v.status) {
-            await this.$router.push(`/authorize?authorization=${this.authorizationCode}`);
-            return;
+          case LoginStatus.EMAIL_UNVERIFIED: {
+            this.error = "Your email address is unverified. Please check your email.";
+            break;
           }
+          case LoginStatus.SCOPE_ERROR: {
+            // Returned in case a (subset)set of requested scopes isnt allowed
+            this.error = "You are not allowed to access the requested resource. Please contact your administrator."
 
-          break;
-        case 403:
-          // Returned in case a (subset)set of requested scopes isnt allowed
-          this.error = "You are not allowed to access the requested resource. Please contact your administrator."
-
-          // Hide input fields, don't need them anymore
-          this.hideAll = true;
-          break;
-        default:
-          this.error = r.statusText;
-          break;
+            // Hide input fields, don't need them anymore
+            this.hideAll = true;
+          }
+        }
+      } else {
+        this.error = loginResult.unwrapErr().message?.toString() ?? "Something went wrong";
       }
     }
   }

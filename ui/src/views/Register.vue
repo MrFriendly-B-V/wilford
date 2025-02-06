@@ -34,6 +34,14 @@
             :rules="rules.repeatPassword"
             label="Repeat Password"
           />
+          <v-select
+            v-model="locale"
+            color="primary"
+            :items="availableLocales"
+            item-title="value"
+            item-value="key"
+            labels="Locale"
+          />
         </v-form>
       </v-card-text>
       <v-card-actions>
@@ -73,11 +81,18 @@ interface Data {
   newEmail?: string;
   newPassword?: string;
   newRepeatPassword?: string;
+  locale?: string;
+  availableLocales: KVPair[];
   rules: {
     required: InputValidationRules;
     password: InputValidationRules;
     repeatPassword: InputValidationRules;
   }
+}
+
+interface KVPair {
+  key: string;
+  value: string;
 }
 
 export default defineComponent({
@@ -92,6 +107,11 @@ export default defineComponent({
       newEmail: undefined,
       newPassword: undefined,
       newRepeatPassword: undefined,
+      locale: 'Nl',
+      availableLocales: [
+        { key: 'Nl', value: 'Nederlands' },
+        { key: 'En', value: 'English' },
+      ],
       rules: {
         required: [
           v => !!v || "Required",
@@ -125,7 +145,9 @@ export default defineComponent({
       if (!await this.verifyRegisterForm()) return;
 
       this.loading = true;
-      const result = await User.register(this.newName!, this.newEmail!, this.newPassword!);
+      const result = await User.register(this.newName!, this.newEmail!, this.newPassword!, this.locale!);
+      this.loading = false;
+
       if(result.isOk()) {
         this.$router.push('/');
       } else {

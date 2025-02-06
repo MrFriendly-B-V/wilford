@@ -58,6 +58,10 @@ export class Result<T, E> {
       return Result.err(this.unwrapErr());
     }
   }
+  
+  public mapVoid(): Result<void, E> {
+    return this.map(() => {});
+  }
 }
 
 export enum ResultState {

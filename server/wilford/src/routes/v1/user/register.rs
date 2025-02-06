@@ -66,7 +66,7 @@ pub async fn register(
 
     match (&new_user.email_verification, &config.email) {
         (Some(verification), Some(email_config)) => {
-            WilfordMailer::new(email_config)
+            if let Err(e) = WilfordMailer::new(email_config)
                 .send_email(
                     &new_user.email,
                     VerifyEmailEmail,
@@ -76,7 +76,15 @@ pub async fn register(
                     },
                     payload.locale,
                 )
-                .await?;
+                .await
+            {
+                // If this email fails, the user can never use their account,
+                // therefor, we delete the account again.
+
+                User::delete(&database, &new_user.id).await?;
+
+                return Err(e.into());
+            }
         }
         (Some(verification), None) => {
             info!("Email configuration not set");

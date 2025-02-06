@@ -10,7 +10,7 @@ use mailer::{EmailChangedData, EmailChangedMail};
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
-pub struct Request {
+pub struct Query {
     verification_code: String,
     user_id: String,
 }
@@ -26,7 +26,7 @@ pub struct Request {
 pub async fn verify_email(
     database: WDatabase,
     config: WConfig,
-    query: web::Query<Request>,
+    query: web::Query<Query>,
 ) -> WebResult<Empty> {
     // Check for support
     let auth = CombinedAuthorizationProvider::new(&config, &database);

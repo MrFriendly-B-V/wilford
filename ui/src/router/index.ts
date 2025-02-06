@@ -60,6 +60,11 @@ const routes = [
             path: '/password-forgotten',
             name: "PasswordForgotten",
             component: () => import('@/views/PasswordForgotten.vue')
+          },
+          {
+            path: '/verify-email',
+            name: 'VerifyEmail',
+            component: () => import('@/views/EmailVerification.vue')
           }
         ]
       }

@@ -61,6 +61,8 @@ pub enum WebErrorKind {
     RsaPkcs8Spki(#[from] rsa::pkcs8::spki::Error),
     #[error("Failed to send email")]
     Email(#[from] crate::mail::MailerError),
+    #[error("Your email address is not verified")]
+    EmailNotVerified,
 }
 
 impl ResponseError for WebError {
@@ -77,6 +79,7 @@ impl ResponseError for WebError {
             WebErrorKind::InternalServerError => StatusCode::INTERNAL_SERVER_ERROR,
             WebErrorKind::RsaPkcs8Spki(_) => StatusCode::INTERNAL_SERVER_ERROR,
             WebErrorKind::Email(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            WebErrorKind::EmailNotVerified => StatusCode::UNAUTHORIZED,
         }
     }
 }

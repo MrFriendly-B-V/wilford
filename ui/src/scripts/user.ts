@@ -1,8 +1,8 @@
 import {server} from "@/main";
 import {ClientInfo} from "@/scripts/clients";
-import {Result} from "@/scripts/core/result";
 import {ApiError} from "@/scripts/core/error";
 import {fetch1} from "@/scripts/core/fetch1";
+import {Result} from "@/scripts/core/result";
 
 interface _User {
     name: string,
@@ -66,8 +66,8 @@ export class User {
         return j.scopes;
     }
 
-    async deletePermittedScope(scope: string) {
-        await fetch(`${server}/api/v1/user/permitted-scopes/remove`, {
+    async deletePermittedScope(scope: string): Promise<Result<void, ApiError>> {
+        return (await fetch1(`${server}/api/v1/user/permitted-scopes/remove`, {
             method: 'DELETE',
             body: JSON.stringify({
                 from: this.espoUserId,
@@ -77,11 +77,11 @@ export class User {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${window.localStorage.getItem('access_token')}`
             }
-        })
+        })).mapVoid();
     }
 
-    async addPermittedScope(scope: string) {
-        await fetch(`${server}/api/v1/user/permitted-scopes/add`, {
+    async addPermittedScope(scope: string): Promise<Result<void, ApiError>> {
+        return (await fetch1(`${server}/api/v1/user/permitted-scopes/add`, {
             method: 'POST',
             body: JSON.stringify({
                 to: this.espoUserId,
@@ -91,7 +91,7 @@ export class User {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${window.localStorage.getItem('access_token')}`
             }
-        })
+        })).mapVoid();
     }
     
     static async isFirstRegister(): Promise<Result<boolean, ApiError>> {
@@ -118,8 +118,8 @@ export class User {
           })
     }
     
-    async updatePassword(oldPassword: string, newPassword: string) {
-        await fetch1(`${server}/api/v1/user/change-password`, {
+    async updatePassword(oldPassword: string, newPassword: string): Promise<Result<void, ApiError>> {
+        return (await fetch1(`${server}/api/v1/user/change-password`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -128,10 +128,10 @@ export class User {
                 old_password: oldPassword,
                 new_password: newPassword
             }),
-        });
+        })).mapVoid();
     }
     
-    static async register(name: string, email: string, password: string): Promise<Result<void, ApiError>> {
+    static async register(name: string, email: string, password: string, locale: string,): Promise<Result<void, ApiError>> {
         return (await fetch1(`${server}/api/v1/user/register`, {
             method: 'POST',
             headers: {
@@ -141,9 +141,9 @@ export class User {
                 name: name,
                 email: email,
                 password: password,
+                locale: locale,
             })
-        }))
-          .map(() => {});
+        })).mapVoid()
     }
     
     static async resetPassword(email: string): Promise<Result<void, ApiError>> {
@@ -155,7 +155,13 @@ export class User {
             body: JSON.stringify({
                 email: email,
             })
-        })).map(() => {})
+        })).mapVoid();
+    }
+    
+    static async verifyEmail(userId: string, code: string): Promise<Result<void, ApiError>> {
+        return (await fetch1(`${server}/api/v1/user/verify-email?user_id=${userId}&verification_code=${code}`, {
+            method: 'POST',
+        })).mapVoid();
     }
 }
 

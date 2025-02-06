@@ -93,7 +93,7 @@ impl User {
         let verification = if requires_email_verification {
             let verification_code = gen_email_verification_code();
 
-            sqlx::query("INSERT INTO user_email_verification (user_id, address, verification_code) VALUES (?, ?, ?)")
+            sqlx::query("INSERT INTO user_email_verifications (user_id, address, verification_code) VALUES (?, ?, ?)")
                 .bind(&user_id)
                 .bind(&email)
                 .bind(&verification_code)
@@ -116,6 +116,8 @@ impl User {
             is_admin,
             locale,
         };
+
+        tx.commit().await?;
 
         Ok((user, verification))
     }
@@ -404,7 +406,7 @@ impl User {
 
         // Create verification code
         let verification_code = gen_email_verification_code();
-        sqlx::query("INSERT INTO uiser_email_verifications (user_id, address, verification_code) VALUES (?, ?, ?)")
+        sqlx::query("INSERT INTO user_email_verifications (user_id, address, verification_code) VALUES (?, ?, ?)")
             .bind(&self.user_id)
             .bind(&new_address)
             .bind(&verification_code)
@@ -483,6 +485,83 @@ impl User {
         .bind(verifcation_code)
         .fetch_optional(&**driver)
         .await?)
+    }
+
+    pub async fn delete(driver: &Database, id: &str) -> Result<()> {
+        let mut tx = driver.begin().await?;
+
+        sqlx::query("DELETE FROM oauth2_access_tokens WHERE user_id = ?")
+            .bind(id)
+            .execute(&mut *tx)
+            .await?;
+
+        sqlx::query("DELETE FROM oauth2_authorization_codes WHERE user_id = ?")
+            .bind(id)
+            .execute(&mut *tx)
+            .await?;
+
+        sqlx::query("DELETE FROM oauth2_pending_authorizations WHERE user_id = ?")
+            .bind(id)
+            .execute(&mut *tx)
+            .await?;
+
+        sqlx::query("DELETE FROM oauth2_refresh_tokens WHERE user_id = ?")
+            .bind(id)
+            .execute(&mut *tx)
+            .await?;
+
+        sqlx::query("DELETE FROM oauth2_access_tokens WHERE user_id = ?")
+            .bind(id)
+            .execute(&mut *tx)
+            .await?;
+
+        sqlx::query("DELETE FROM user_credentials WHERE user_id = ?")
+            .bind(id)
+            .execute(&mut *tx)
+            .await?;
+
+        sqlx::query("DELETE FROM user_permitted_scopes WHERE user_id = ?")
+            .bind(id)
+            .execute(&mut *tx)
+            .await?;
+
+        sqlx::query("DELETE FROM user_email_verifications WHERE user_id = ?")
+            .bind(id)
+            .execute(&mut *tx)
+            .await?;
+
+        sqlx::query("DELETE FROM user_emails WHERE user_id = ?")
+            .bind(id)
+            .execute(&mut *tx)
+            .await?;
+
+        // Lastly, delete from users table
+        sqlx::query("DELETE FROM users WHERE user_id = ?")
+            .bind(id)
+            .execute(&mut *tx)
+            .await?;
+
+        tx.commit().await?;
+
+        Ok(())
+    }
+
+    /// Check whether the current email address is verified.
+    /// This is generally true, except for newly created accounts.
+    ///
+    /// # Errors
+    ///
+    /// If the query fails
+    pub async fn is_email_verified(&self, database: &Database) -> Result<bool> {
+        Ok(
+            sqlx::query_scalar(
+                "SELECT verified FROM user_emails WHERE user_id = ? AND address = ?",
+            )
+            .bind(&self.user_id)
+            .bind(&self.email)
+            .fetch_one(&**database)
+            .await?,
+        )
     }
 }
 
