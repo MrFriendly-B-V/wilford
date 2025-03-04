@@ -5,6 +5,7 @@ use actix_web::web::ServiceConfig;
 use database::user::UserEmailVerification;
 
 mod change_email;
+mod change_name;
 mod change_password;
 mod info;
 mod list;
@@ -42,6 +43,7 @@ impl Routable for Router {
                     web::get().to(supports_password_change::supports_password_change),
                 )
                 .route("/register", web::post().to(register::register))
+                .route("/change-name", web::post().to(change_name::change_name))
                 .route("/verify-email", web::post().to(verify_email::verify_email)),
         );
     }

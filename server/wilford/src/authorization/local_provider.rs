@@ -184,6 +184,11 @@ impl<'a> AuthorizationProvider for LocalAuthorizationProvider<'a> {
 
         Ok(())
     }
+
+    #[instrument(skip_all)]
+    fn supports_name_change(&self) -> bool {
+        true
+    }
 }
 
 /// Hash the password.

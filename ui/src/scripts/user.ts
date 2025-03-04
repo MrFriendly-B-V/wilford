@@ -6,17 +6,20 @@ import {Result} from "@/scripts/core/result";
 
 interface _User {
     name: string,
+    email: string,
     espo_user_id: string,
     is_admin: boolean,
 }
 
 export class User {
     name: string;
+    email: string;
     espoUserId: string;
     isAdmin: boolean;
 
-    constructor(name: string, espoUserId: string, isAdmin: boolean) {
+    constructor(name: string, email: string, espoUserId: string, isAdmin: boolean) {
         this.name = name;
+        this.email = email;
         this.espoUserId = espoUserId;
         this.isAdmin = isAdmin;
     }
@@ -34,7 +37,7 @@ export class User {
               }
               
               const j: _UserInfo = await r.json();
-              return new UserInfo(j.name, j.espo_user_id, j.is_admin, j.require_password_change);
+              return new UserInfo(j.name, j.email, j.espo_user_id, j.is_admin, j.require_password_change);
           })
         ).unwrap()
     }
@@ -47,7 +50,7 @@ export class User {
               }
               
               const payload: Payload = await response.json();
-              return payload.users.map(u => new User(u.name, u.espo_user_id, u.is_admin))
+              return payload.users.map(u => new User(u.name, u.email, u.espo_user_id, u.is_admin))
           });
     }
 
@@ -163,13 +166,38 @@ export class User {
             method: 'POST',
         })).mapVoid();
     }
+    
+    async changeName(newName: string): Promise<Result<void, ApiError>> {
+        return (await fetch1(`${server}/api/v1/user/change-name`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                new_name: newName
+            })
+        })).mapVoid();
+    }
+    
+    async changeEmail(newEmail: string, password: string): Promise<Result<void, ApiError>> {
+        return (await fetch1(`${server}/api/v1/user/change-email`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                new_email: newEmail,
+                password: password,
+            })
+        })).mapVoid();
+    }
 }
 
 export class UserInfo extends User {
     requirePasswordChange: boolean;
     
-    constructor(name: string, espoUserId: string, isAdmin: boolean, requirePasswordChange: boolean) {
-        super(name, espoUserId, isAdmin);
+    constructor(name: string, email: string, espoUserId: string, isAdmin: boolean, requirePasswordChange: boolean) {
+        super(name, email, espoUserId, isAdmin);
         this.requirePasswordChange = requirePasswordChange;
     }
 }

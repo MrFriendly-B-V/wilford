@@ -160,4 +160,11 @@ impl<'a> AuthorizationProvider for CombinedAuthorizationProvider<'a> {
                 .map_err(AuthorizationError::convert),
         }
     }
+
+    fn supports_name_change(&self) -> bool {
+        match self {
+            Self::Local(credentials_provider) => credentials_provider.supports_name_change(),
+            Self::EspoCrm(espocrm) => espocrm.supports_name_change(),
+        }
+    }
 }

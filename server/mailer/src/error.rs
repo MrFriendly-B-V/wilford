@@ -19,5 +19,7 @@ pub enum MailerError {
     #[error(transparent)]
     Email(#[from] lettre::error::Error),
     #[error(transparent)]
-    Address(#[from] lettre::address::AddressError),
+    IpAddress(#[from] crate::ipv4::AddressError),
+    #[error(transparent)]
+    EmailAddress(#[from] lettre::address::AddressError),
 }

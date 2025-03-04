@@ -3,7 +3,7 @@ use crate::authorization::combined::{
 };
 use crate::authorization::espo::EspoAuthorizationProviderError;
 use crate::authorization::local_provider::LocalAuthorizationProviderError;
-use crate::authorization::{AuthorizationError, AuthorizationProvider, UserInformation};
+use crate::authorization::{AuthorizationError, AuthorizationProvider};
 use crate::routes::appdata::{WConfig, WDatabase};
 use crate::routes::error::{WebErrorKind, WebResult};
 use actix_web::web;

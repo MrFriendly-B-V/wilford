@@ -136,4 +136,6 @@ pub trait AuthorizationProvider {
         user_id: &str,
         new_email: &str,
     ) -> Result<(), AuthorizationError<Self::Error>>;
+
+    fn supports_name_change(&self) -> bool;
 }

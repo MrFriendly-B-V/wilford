@@ -7,6 +7,7 @@ use serde::Serialize;
 #[derive(Serialize)]
 pub struct Response {
     name: String,
+    email: String,
     is_admin: bool,
     espo_user_id: String,
     require_password_change: bool,
@@ -23,5 +24,6 @@ pub async fn info(auth: Auth, database: WDatabase) -> WebResult<web::Json<Respon
             .password_change_required(&database)
             .await?
             .unwrap_or(false),
+        email: auth.user.email,
     }))
 }

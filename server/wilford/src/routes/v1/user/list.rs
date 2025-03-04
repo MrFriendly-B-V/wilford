@@ -20,6 +20,8 @@ pub struct User {
     espo_user_id: String,
     /// Whether the user is an admin
     is_admin: bool,
+    /// The email address of the user
+    email: String,
 }
 
 /// List all users.
@@ -38,6 +40,7 @@ pub async fn list(database: WDatabase, auth: Auth) -> WebResult<web::Json<Respon
         .into_iter()
         .map(|u| User {
             name: u.name,
+            email: u.email,
             espo_user_id: u.user_id,
             is_admin: u.is_admin,
         })

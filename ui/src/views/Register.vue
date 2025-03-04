@@ -71,6 +71,7 @@ import ErrorBanner from "@/components/banners/ErrorBanner.vue";
 import {InputValidationRules} from "@/main";
 import {User} from "@/scripts/user";
 import {VForm} from "vuetify/components";
+import {PASSWORD_RULES, REQUIRED_RULES} from "@/scripts/validation_rules";
 
 interface Data {
   error?: string;
@@ -113,16 +114,11 @@ export default defineComponent({
         { key: 'En', value: 'English' },
       ],
       rules: {
-        required: [
-          v => !!v || "Required",
-        ],
-        password: [
-          v => !!v || "Required",
-        ],
-        repeatPassword: [
-          v => !!v || "Required",
-          v => v == (<Data> this.$data).newPassword || "Password must be the same",
-        ]
+        required: REQUIRED_RULES,
+        password: PASSWORD_RULES,
+        repeatPassword: PASSWORD_RULES.concat([
+            v => v == (<Data> this.$data).newPassword || "Password must be the same",
+        ])
       }
     }
   },

@@ -164,4 +164,9 @@ impl<'a> AuthorizationProvider for EspoAuthorizationProvider<'a> {
     async fn set_email(&mut self, _: &str, _: &str) -> Result<(), AuthorizationError<Self::Error>> {
         Err(AuthorizationError::UnsupportedOperation)
     }
+
+    #[instrument(skip_all)]
+    fn supports_name_change(&self) -> bool {
+        false
+    }
 }

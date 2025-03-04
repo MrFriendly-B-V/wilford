@@ -44,7 +44,9 @@ impl<'a> WilfordMailer<'a> {
         M: Mailable,
     {
         // Establish the SMTP connection
-        let ipv4 = mailer::net::get_local_v4().await?;
+        let ipv4 = mailer::net::get_local_v4()
+            .await
+            .map_err(|e| mailer::MailerError::from(e))?;
         let mut conn =
             mailer::net::get_connection(ipv4, &self.config.smtp, &self.get_ehlo_domain()).await?;
 
