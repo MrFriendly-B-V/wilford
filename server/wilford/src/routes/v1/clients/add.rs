@@ -11,10 +11,20 @@ use crate::routes::v1::MANAGE_SCOPE;
 
 #[derive(Deserialize)]
 pub struct Request {
+    /// The name of an OAuth client
     name: String,
+    /// The redirect URI of the client
     redirect_uri: String,
 }
 
+/// Add a new OAuth2 client
+///
+/// # Errors
+///
+/// - If the user does not have sufficient scopes
+/// - If the name is too long; >64
+/// - If the name is already used
+/// - If the operation fails
 pub async fn add(database: WDatabase, auth: Auth, payload: web::Json<Request>) -> WebResult<Empty> {
     if !auth.has_scope(MANAGE_SCOPE) {
         return Err(WebErrorKind::Forbidden.into());

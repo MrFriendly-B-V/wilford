@@ -9,9 +9,16 @@ use serde::Deserialize;
 
 #[derive(Deserialize)]
 pub struct Request {
+    /// The new name
     new_name: String,
 }
 
+/// Change the name of the current user
+///
+/// # Errors
+///
+/// - If the operation fails
+/// - If the operation is not supported
 pub async fn change_name(
     mut auth: Auth,
     payload: web::Json<Request>,

@@ -12,9 +12,18 @@ use serde::Deserialize;
 
 #[derive(Deserialize)]
 pub struct Request {
+    /// The email address of the user who has forgotten their password
     email: String,
 }
 
+/// Request a temporary password for the user email provided.
+/// This will send an email to the configured email address with a temporary password.
+///
+/// # Errors
+///
+/// - If the email address does not belong to any user
+/// - If the operation is not supported
+/// - If the operation fails
 pub async fn password_forgotten(
     config: WConfig,
     database: WDatabase,

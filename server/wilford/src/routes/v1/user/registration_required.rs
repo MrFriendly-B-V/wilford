@@ -11,6 +11,10 @@ pub struct Response {
 }
 
 /// Whether the registration of a user is required
+///
+/// # Errors
+///
+/// If the operation fails
 pub async fn registration_required(database: WDatabase) -> WebResult<web::Json<Response>> {
     Ok(web::Json(Response {
         // Require registration of a user if we curently do not have any

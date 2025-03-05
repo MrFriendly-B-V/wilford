@@ -13,11 +13,15 @@ use tracing::info;
 
 #[derive(Deserialize)]
 pub struct Request {
+    /// The new email address
     new_email: String,
+    /// The password of the user
     password: String,
 }
 
-/// Change email address of the user
+/// Change email address of the user.
+/// This will send an email to the current email address of the user,
+/// the user then needs to confirm the change before it takes effect.
 ///
 /// # Errors
 /// - The operation is not supported

@@ -18,12 +18,12 @@ pub struct Request {
     new_password: String,
 }
 
-/// Change the password of the authorized user
+/// Change the password of the authorized user.
 ///
 /// # Errors
 ///
 /// - If the provider does not support changing passwords
-/// - If the provi`ded `old_password` does not match the stored password
+/// - If the provided `old_password` does not match the stored password
 /// - If the change operation fails
 pub async fn change_password(
     auth: Auth,
