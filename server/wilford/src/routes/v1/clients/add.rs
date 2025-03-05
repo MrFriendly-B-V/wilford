@@ -37,8 +37,7 @@ pub async fn add(database: WDatabase, auth: Auth, payload: web::Json<Request>) -
     let exists = OAuth2Client::list(&database)
         .await?
         .into_iter()
-        .find(|c| c.name.eq(&payload.name))
-        .is_some();
+        .any(|c| c.name.eq(&payload.name));
 
     if exists {
         return Err(WebErrorKind::BadRequest.into());

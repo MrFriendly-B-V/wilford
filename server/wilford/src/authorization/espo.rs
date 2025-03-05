@@ -50,7 +50,7 @@ impl<'a> AuthorizationProvider for EspoAuthorizationProvider<'a> {
     ) -> Result<CredentialsValidationResult, AuthorizationError<Self::Error>> {
         // Check the credentials with the EspoCRM instance
         // This will yield the user ID
-        let user_id = match EspoUser::try_login(&self.host, username, password, totp_code)
+        let user_id = match EspoUser::try_login(self.host, username, password, totp_code)
             .await
             .map_err(Self::Error::from)?
         {
@@ -73,7 +73,7 @@ impl<'a> AuthorizationProvider for EspoAuthorizationProvider<'a> {
 
         // While we now know the user is authorized,
         // we do want to ensure the user is also represented in our database correctly
-        let db_user = User::get_by_id(&self.database_driver, &user_id)
+        let db_user = User::get_by_id(self.database_driver, &user_id)
             .await
             .map_err(|e| AuthorizationError::Other(e.into()))?;
 
@@ -83,7 +83,7 @@ impl<'a> AuthorizationProvider for EspoAuthorizationProvider<'a> {
             // Admin status
             if db_user.is_admin != is_admin {
                 db_user
-                    .set_is_admin(&self.database_driver, is_admin)
+                    .set_is_admin(self.database_driver, is_admin)
                     .await
                     .map_err(|e| AuthorizationError::Other(e.into()))?;
             }
@@ -91,7 +91,7 @@ impl<'a> AuthorizationProvider for EspoAuthorizationProvider<'a> {
             // Name
             if db_user.name.ne(&espo_user.name) {
                 db_user
-                    .set_name(&self.database_driver, &espo_user.name)
+                    .set_name(self.database_driver, &espo_user.name)
                     .await
                     .map_err(|e| AuthorizationError::Other(e.into()))?;
             }

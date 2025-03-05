@@ -76,7 +76,7 @@ impl User {
         .bind(&name)
         .bind(&email)
         .bind(is_admin)
-        .bind(&locale)
+        .bind(locale)
         .execute(&mut *tx)
         .await?;
 
@@ -129,10 +129,10 @@ impl User {
     /// If the query fails
     #[instrument(skip(driver))]
     pub async fn get_by_id(driver: &Database, id: &str) -> Result<Option<Self>> {
-        Ok(sqlx::query_as("SELECT * FROM users WHERE user_id = ?")
+        sqlx::query_as("SELECT * FROM users WHERE user_id = ?")
             .bind(id)
             .fetch_optional(&**driver)
-            .await?)
+            .await
     }
 
     /// Get a user by their email address
@@ -142,10 +142,10 @@ impl User {
     /// If the query fails
     #[instrument(skip(driver))]
     pub async fn get_by_email(driver: &Database, email: &str) -> Result<Option<Self>> {
-        Ok(sqlx::query_as("SELECT * FROM users WHERE email = ?")
+        sqlx::query_as("SELECT * FROM users WHERE email = ?")
             .bind(email)
             .fetch_optional(&**driver)
-            .await?)
+            .await
     }
 
     /// Get the total number of users
@@ -155,9 +155,9 @@ impl User {
     /// If the query fails
     #[instrument(skip(driver))]
     pub async fn count(driver: &Database) -> Result<i64> {
-        Ok(sqlx::query_scalar("SELECT COUNT(1) FROM users")
+        sqlx::query_scalar("SELECT COUNT(1) FROM users")
             .fetch_one(&**driver)
-            .await?)
+            .await
     }
 
     /// Get a list of all users
@@ -167,9 +167,9 @@ impl User {
     /// If the query fails
     #[instrument(skip(driver))]
     pub async fn list(driver: &Database) -> Result<Vec<Self>> {
-        Ok(sqlx::query_as("SELECT * FROM users")
+        sqlx::query_as("SELECT * FROM users")
             .fetch_all(&**driver)
-            .await?)
+            .await
     }
 
     /// List the scopes a user is permitted to request
@@ -179,12 +179,10 @@ impl User {
     /// If the query fails
     #[instrument(skip(driver))]
     pub async fn list_permitted_scopes(&self, driver: &Database) -> Result<Vec<String>> {
-        Ok(
-            sqlx::query_scalar("SELECT scope FROM user_permitted_scopes WHERE user_id = ?")
-                .bind(&self.user_id)
-                .fetch_all(&**driver)
-                .await?,
-        )
+        sqlx::query_scalar("SELECT scope FROM user_permitted_scopes WHERE user_id = ?")
+            .bind(&self.user_id)
+            .fetch_all(&**driver)
+            .await
     }
 
     /// Remove a scope that the user was permitted to request.
@@ -310,7 +308,7 @@ impl User {
     #[instrument(skip(driver))]
     pub async fn set_locale(&mut self, driver: &Database, new_locale: Locale) -> Result<()> {
         sqlx::query("UPDATE users set locale = ? WHERE user_id = ?")
-            .bind(&new_locale)
+            .bind(new_locale)
             .bind(&self.user_id)
             .execute(&**driver)
             .await?;
@@ -332,7 +330,7 @@ impl User {
         password: P,
         require_change: bool,
     ) -> Result<()> {
-        if self.get_password_hash(&driver).await?.is_some() {
+        if self.get_password_hash(driver).await?.is_some() {
             sqlx::query("UPDATE user_credentials SET password_hash = ?, change_required = ? WHERE user_id = ?")
                 .bind(password.as_ref())
                 .bind(require_change)
@@ -358,12 +356,10 @@ impl User {
     /// If the query fails
     #[instrument(skip(driver))]
     pub async fn get_password_hash(&self, driver: &Database) -> Result<Option<String>> {
-        Ok(
-            sqlx::query_scalar("SELECT password_hash FROM user_credentials WHERE user_id = ?")
-                .bind(&self.user_id)
-                .fetch_optional(&**driver)
-                .await?,
-        )
+        sqlx::query_scalar("SELECT password_hash FROM user_credentials WHERE user_id = ?")
+            .bind(&self.user_id)
+            .fetch_optional(&**driver)
+            .await
     }
 
     /// Check whether a password change is required for the user.
@@ -373,12 +369,10 @@ impl User {
     /// If the query fails
     #[instrument(skip(driver))]
     pub async fn password_change_required(&self, driver: &Database) -> Result<Option<bool>> {
-        Ok(
-            sqlx::query_scalar("SELECT change_required FROM user_credentials WHERE user_id = ?")
-                .bind(&self.user_id)
-                .fetch_optional(&**driver)
-                .await?,
-        )
+        sqlx::query_scalar("SELECT change_required FROM user_credentials WHERE user_id = ?")
+            .bind(&self.user_id)
+            .fetch_optional(&**driver)
+            .await
     }
 
     /// Register an email address update.
@@ -478,13 +472,13 @@ impl User {
         verifcation_code: &str,
         driver: &Database,
     ) -> Result<Option<UserEmailVerification>> {
-        Ok(sqlx::query_as(
+        sqlx::query_as(
             "SELECT * FROM user_email_verifications WHERE user_id = ? AND verification_code = ?",
         )
         .bind(&self.user_id)
         .bind(verifcation_code)
         .fetch_optional(&**driver)
-        .await?)
+        .await
     }
 
     pub async fn delete(driver: &Database, id: &str) -> Result<()> {
@@ -553,15 +547,11 @@ impl User {
     ///
     /// If the query fails
     pub async fn is_email_verified(&self, database: &Database) -> Result<bool> {
-        Ok(
-            sqlx::query_scalar(
-                "SELECT verified FROM user_emails WHERE user_id = ? AND address = ?",
-            )
+        sqlx::query_scalar("SELECT verified FROM user_emails WHERE user_id = ? AND address = ?")
             .bind(&self.user_id)
             .bind(&self.email)
             .fetch_one(&**database)
-            .await?,
-        )
+            .await
     }
 }
 

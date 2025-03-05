@@ -144,7 +144,7 @@ async fn are_scopes_allowed(
     user: &User,
 ) -> WebResult<bool> {
     // Check which scopes are granted to the user
-    let permitted_scopes = HashSet::from_iter(user.list_permitted_scopes(&database).await?);
+    let permitted_scopes = HashSet::from_iter(user.list_permitted_scopes(database).await?);
 
     // The set of allowed scopes are the scopes granted to the user by an admin
     // and the oidc scopes, which are always allowed

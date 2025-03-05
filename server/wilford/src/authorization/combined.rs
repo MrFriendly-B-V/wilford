@@ -51,7 +51,7 @@ impl<'a> CombinedAuthorizationProvider<'a> {
                     Self::EspoCrm(EspoAuthorizationProvider::new(
                         client,
                         &espo_config.host,
-                        &database,
+                        database,
                     ))
                 } else {
                     panic!("EspoCrm configured as authorization provider, but no config set for EspoCrm");
@@ -97,7 +97,7 @@ impl<'a> AuthorizationProvider for CombinedAuthorizationProvider<'a> {
         new_password: &str,
         require_change: bool,
     ) -> Result<(), AuthorizationError<Self::Error>> {
-        Ok(match self {
+        match self {
             Self::Local(local) => local
                 .set_password(user_id, new_password, require_change)
                 .await
@@ -106,7 +106,9 @@ impl<'a> AuthorizationProvider for CombinedAuthorizationProvider<'a> {
                 .set_password(user_id, new_password, require_change)
                 .await
                 .map_err(AuthorizationError::convert)?,
-        })
+        }
+
+        Ok(())
     }
 
     fn supports_registration(&self) -> bool {

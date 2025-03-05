@@ -24,14 +24,14 @@ pub enum LoginStatus {
 impl EspoUser {
     #[instrument(skip(client))]
     pub async fn get_by_id(client: &EspoApiClient, id: &str) -> Result<Self> {
-        Ok(client
+        client
             .request::<(), &str>(Method::Get, &format!("User/{id}"), None, None)
             .instrument(warn_span!("user::by_id"))
             .await?
             .error_for_status()?
             .json()
             .instrument(warn_span!("user::by_id::json"))
-            .await?)
+            .await
     }
 
     #[instrument(skip_all)]

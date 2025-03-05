@@ -15,15 +15,19 @@ pub struct HbsTemplate {
     pub content: String,
 }
 
-pub struct TemplateEngine;
+pub struct TemplateEngine(Handlebars<'static>);
 
 impl TemplateEngine {
+    pub fn into_inner(self) -> Handlebars<'static> {
+        self.0
+    }
+
     /// Set up the Handlebars engine.
     ///
     /// # Errors
     /// - If a partial is invalid.
     /// - If a template is invalid.
-    pub fn new(extra_partials: Vec<HbsTemplate>) -> Result<Handlebars<'static>> {
+    pub fn new(extra_partials: Vec<HbsTemplate>) -> Result<Self> {
         let mut handlebars = Handlebars::new();
         handlebars.set_dev_mode(is_dev_mode());
         handlebars.set_strict_mode(true);
@@ -43,7 +47,7 @@ impl TemplateEngine {
             handlebars.register_template_string(&template.name, template.content)?;
         }
 
-        Ok(handlebars)
+        Ok(Self(handlebars))
     }
 
     /// Get all partials stored in the binary.
@@ -63,13 +67,11 @@ impl TemplateEngine {
     fn get_embed(embed: Dir<'_>) -> Vec<HbsTemplate> {
         embed
             .files()
-            .into_iter()
-            .map(|f| {
+            .filter_map(|f| {
                 let name = f
                     .path()
                     .file_name()
-                    .map(|fname| fname.to_str())
-                    .flatten()
+                    .and_then(|fname| fname.to_str())
                     // Split by .
                     .map(|fname| fname.split(".").collect::<Vec<_>>())
                     // Keep all but the last element
@@ -88,7 +90,6 @@ impl TemplateEngine {
                     _ => None,
                 }
             })
-            .filter_map(|hbs_template| hbs_template)
             .collect()
     }
 }

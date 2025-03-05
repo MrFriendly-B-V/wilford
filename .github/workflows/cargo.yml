@@ -8,6 +8,31 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  clippy:
+    name: Cargo clippy
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        toolchain:
+          - stable
+
+    steps:
+    - uses: actions/checkout@v4
+    - run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
+    - run: rustup component add --toolchain ${{ matrix.toolchain }} clippy
+    - name: Cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          server/target
+        key: ${{ runner.os }}-${{ matrix.toolchain }}-${{ matrix.target }}-cargo-${{ hashFiles('server/**/Cargo.lock') }}
+    - name: Clippy
+      env:
+        RUSTFLAGS: "-Dwarnings"
+      run: cd server && cargo clippy
+
   fmt:
     name: Cargo fmt 
     runs-on: ubuntu-latest

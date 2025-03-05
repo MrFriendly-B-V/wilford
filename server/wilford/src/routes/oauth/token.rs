@@ -116,7 +116,7 @@ pub async fn token(
                 None => return Err(OAuth2ErrorKind::InvalidRequest),
             };
 
-            let rtoken = RefreshToken::get_by_token(&database, &rtoken)
+            let rtoken = RefreshToken::get_by_token(&database, rtoken)
                 .await
                 .tap_err(|e| warn!("{e}"))
                 .map_err(|_| OAuth2ErrorKind::ServerError)?

@@ -35,7 +35,7 @@ pub async fn authorize(
             .await?
             .ok_or(WebErrorKind::NotFound)?;
 
-    let client = OAuth2Client::get_by_client_id(&database, &pending_authorization.client_id())
+    let client = OAuth2Client::get_by_client_id(&database, pending_authorization.client_id())
         .await?
         .ok_or(WebErrorKind::NotFound)?;
 
@@ -143,7 +143,7 @@ async fn new_access_token(
     database: &Database,
 ) -> WebResult<AccessToken> {
     Ok(client
-        .new_access_token(&database, pending_authorization)
+        .new_access_token(database, pending_authorization)
         .await
         .map_err(|e| match e {
             OAuth2AuthorizationCodeCreationError::Sqlx(e) => WebErrorKind::Database(e),

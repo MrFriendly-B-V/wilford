@@ -9,7 +9,7 @@ pub use password_forgotten::*;
 pub use verify_email::*;
 
 use crate::error::Result;
-use crate::mailer::Mailer;
+use crate::mailer::{Mailer, SendMail};
 use crate::HbsTemplate;
 use database::user::Locale;
 use lettre::transport::smtp::client::AsyncSmtpConnection;
@@ -51,10 +51,12 @@ pub trait Mailable {
         async move {
             Mailer::send(
                 connection,
-                to,
-                from,
-                Self::subject(&locale),
-                data,
+                SendMail {
+                    to,
+                    from,
+                    subject: Self::subject(&locale),
+                    data,
+                },
                 Self::template_name(),
                 locale,
                 extra_partials,

@@ -14,7 +14,7 @@ use crate::routes::error::WebResult;
 #[derive(Serialize)]
 pub struct Jwks {
     /// The public keys we use
-    keys: Vec<JWK>,
+    keys: Vec<Jwk>,
 }
 
 /// A JWK, a JSON Web Key.
@@ -23,7 +23,7 @@ pub struct Jwks {
 /// - General format: [RFC 7517, Section 4](https://datatracker.ietf.org/doc/html/rfc7517#section-4)
 /// - RSA Public key extra's: [RFC 7518, Section 6.3.1](https://datatracker.ietf.org/doc/html/rfc7518#section-6.3.1)
 #[derive(Serialize)]
-pub struct JWK {
+pub struct Jwk {
     kty: String,
     r#use: String,
     alg: String,
@@ -46,7 +46,7 @@ pub async fn jwks(oidc_public_key: WOidcPublicKey) -> WebResult<web::Json<Jwks>>
     let public_key = RsaPublicKey::from_public_key_pem(&oidc_public_key.0)?;
 
     Ok(web::Json(Jwks {
-        keys: vec![JWK {
+        keys: vec![Jwk {
             kty: "RSA".to_string(),
             r#use: "sig".to_string(),
             alg: "RS256".to_string(),

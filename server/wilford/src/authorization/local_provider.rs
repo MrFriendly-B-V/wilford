@@ -61,7 +61,7 @@ impl<'a> AuthorizationProvider for LocalAuthorizationProvider<'a> {
         let ok = verify(password, &stored_hash).map_err(Self::Error::from)?;
 
         let require_password_change = user
-            .password_change_required(&self.driver)
+            .password_change_required(self.driver)
             .await
             .map_err(Self::Error::from)?
             // Unwrap is safe, only None if there is no password either.
@@ -101,7 +101,7 @@ impl<'a> AuthorizationProvider for LocalAuthorizationProvider<'a> {
             .ok_or(AuthorizationError::InvalidCredentials)?;
 
         // Generate the new password hash.
-        let new_password = hash_password(&new_password)?;
+        let new_password = hash_password(new_password)?;
 
         // Finally, update the database
         user.set_password_hash(self.driver, new_password, require_change)
@@ -135,7 +135,7 @@ impl<'a> AuthorizationProvider for LocalAuthorizationProvider<'a> {
 
         // Create the user in the database
         let (user, verification) = User::new(
-            &self.driver,
+            self.driver,
             user_id.clone(),
             name.to_string(),
             email.to_string(),
@@ -150,7 +150,7 @@ impl<'a> AuthorizationProvider for LocalAuthorizationProvider<'a> {
         let password = hash_password(password)?;
 
         // Set password
-        user.set_password_hash(&self.driver, password, false)
+        user.set_password_hash(self.driver, password, false)
             .await
             .map_err(Self::Error::from)?;
 
@@ -173,12 +173,12 @@ impl<'a> AuthorizationProvider for LocalAuthorizationProvider<'a> {
         user_id: &str,
         new_email: &str,
     ) -> Result<(), AuthorizationError<Self::Error>> {
-        let mut user = User::get_by_id(&self.driver, user_id)
+        let mut user = User::get_by_id(self.driver, user_id)
             .await
             .map_err(Self::Error::from)?
             .ok_or(AuthorizationError::InvalidCredentials)?;
 
-        user.set_email(&self.driver, new_email)
+        user.set_email(self.driver, new_email)
             .await
             .map_err(Self::Error::from)?;
 
@@ -201,7 +201,7 @@ fn hash_password(password: &str) -> Result<String, LocalAuthorizationProviderErr
     // this could change in the future. That would result in some rather annoying
     // differences in the way we hash.
     hash_with_result(password, bcrypt::DEFAULT_COST)
-        .map_err(|e| LocalAuthorizationProviderError::from(e))
+        .map_err(LocalAuthorizationProviderError::from)
         .map(|parts| parts.format_for_version(Version::TwoB))
 }
 

@@ -9,6 +9,13 @@ use std::str::FromStr;
 
 pub(crate) struct Mailer;
 
+pub struct SendMail<'a, S: Serialize> {
+    pub to: &'a str,
+    pub from: &'a str,
+    pub subject: &'a str,
+    pub data: &'a S,
+}
+
 impl Mailer {
     /// Send an email
     ///
@@ -18,21 +25,21 @@ impl Mailer {
     /// - If the email could not be sent
     pub async fn send<S: Serialize>(
         connection: &mut AsyncSmtpConnection,
-        to: &str,
-        from: &str,
-        subject: &str,
-        data: &S,
+        send_mail: SendMail<'_, S>,
         template_name: &str,
         locale: Locale,
         extra_partials: Vec<HbsTemplate>,
     ) -> crate::error::Result<()> {
         // Render the body
         let handlebars = TemplateEngine::new(extra_partials)?;
-        let body_html = handlebars.render(&localize_template_name(&locale, template_name), data)?;
+        let body_html = handlebars.into_inner().render(
+            &localize_template_name(&locale, template_name),
+            send_mail.data,
+        )?;
 
         // Create the message
-        let msg =
-            Self::prepare_message(to, from, subject)?.singlepart(SinglePart::html(body_html))?;
+        let msg = Self::prepare_message(send_mail.to, send_mail.from, send_mail.subject)?
+            .singlepart(SinglePart::html(body_html))?;
 
         // Send the message
         connection.send(msg.envelope(), &msg.formatted()).await?;

@@ -32,7 +32,7 @@ pub async fn authorization_info(
         }
     }
 
-    let client = OAuth2Client::get_by_client_id(&database, &authorization.client_id())
+    let client = OAuth2Client::get_by_client_id(&database, authorization.client_id())
         .await?
         .ok_or(WebErrorKind::NotFound)?;
 
