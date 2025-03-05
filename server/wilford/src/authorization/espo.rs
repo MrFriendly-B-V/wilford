@@ -38,7 +38,7 @@ pub enum EspoAuthorizationProviderError {
     Database(#[from] database::driver::Error),
 }
 
-impl<'a> AuthorizationProvider for EspoAuthorizationProvider<'a> {
+impl AuthorizationProvider for EspoAuthorizationProvider<'_> {
     type Error = EspoAuthorizationProviderError;
 
     #[instrument(skip(self, password))]

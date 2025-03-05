@@ -29,7 +29,7 @@ impl<'c, I> SetCookie<'c, I> {
     }
 }
 
-impl<'c, I> Responder for SetCookie<'c, I>
+impl<I> Responder for SetCookie<'_, I>
 where
     I: Responder,
 {
@@ -73,7 +73,7 @@ impl<'c, I> MaybeCookie<'c, I> {
     }
 }
 
-impl<'c, I> MaybeCookie<'c, I>
+impl<I> MaybeCookie<'_, I>
 where
     I: Responder,
 {
@@ -86,7 +86,7 @@ where
     }
 }
 
-impl<'c, I> Responder for MaybeCookie<'c, I>
+impl<I> Responder for MaybeCookie<'_, I>
 where
     I: Responder,
 {

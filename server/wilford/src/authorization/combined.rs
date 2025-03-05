@@ -61,7 +61,7 @@ impl<'a> CombinedAuthorizationProvider<'a> {
     }
 }
 
-impl<'a> AuthorizationProvider for CombinedAuthorizationProvider<'a> {
+impl AuthorizationProvider for CombinedAuthorizationProvider<'_> {
     type Error = CombinedAuthorizationProviderError;
 
     async fn validate_credentials(

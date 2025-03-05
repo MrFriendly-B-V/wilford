@@ -31,7 +31,7 @@ impl<'a> LocalAuthorizationProvider<'a> {
     }
 }
 
-impl<'a> AuthorizationProvider for LocalAuthorizationProvider<'a> {
+impl AuthorizationProvider for LocalAuthorizationProvider<'_> {
     type Error = LocalAuthorizationProviderError;
 
     #[instrument(skip(self, password))]
