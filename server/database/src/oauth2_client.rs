@@ -217,9 +217,9 @@ impl OAuth2Client {
 
     #[instrument]
     pub async fn list(driver: &Database) -> Result<Vec<Self>> {
-        Ok(sqlx::query_as("SELECT * FROM oauth2_clients")
+        sqlx::query_as("SELECT * FROM oauth2_clients")
             .fetch_all(&**driver)
-            .await?)
+            .await
     }
 
     #[instrument]
@@ -233,12 +233,10 @@ impl OAuth2Client {
 
     #[instrument]
     pub async fn get_by_client_id(driver: &Database, client_id: &str) -> Result<Option<Self>> {
-        Ok(
-            sqlx::query_as("SELECT * FROM oauth2_clients WHERE client_id = ?")
-                .bind(client_id)
-                .fetch_optional(&**driver)
-                .await?,
-        )
+        sqlx::query_as("SELECT * FROM oauth2_clients WHERE client_id = ?")
+            .bind(client_id)
+            .fetch_optional(&**driver)
+            .await
     }
 
     #[instrument]
@@ -456,12 +454,10 @@ impl OAuth2Client {
 impl AccessToken {
     #[instrument]
     pub async fn get_by_token(driver: &Database, token: &str) -> Result<Option<Self>> {
-        Ok(
-            sqlx::query_as("SELECT * FROM oauth2_access_tokens WHERE token = ?")
-                .bind(token)
-                .fetch_optional(&**driver)
-                .await?,
-        )
+        sqlx::query_as("SELECT * FROM oauth2_access_tokens WHERE token = ?")
+            .bind(token)
+            .fetch_optional(&**driver)
+            .await
     }
 
     #[instrument]
@@ -478,8 +474,8 @@ impl AccessToken {
                 .await?
                 // Only valid if the token hasn't expired yet
                 .map(|token: Self| {
-                    let valid = time::OffsetDateTime::now_utc().unix_timestamp() < token.expires_at;
-                    valid.then(|| token)
+                    let valid = OffsetDateTime::now_utc().unix_timestamp() < token.expires_at;
+                    valid.then_some(token)
                 })
                 .unwrap_or(None), // No token found for the client --> not valid
         )
@@ -497,12 +493,10 @@ impl AccessToken {
 impl RefreshToken {
     #[instrument]
     pub async fn get_by_token(driver: &Database, token: &str) -> Result<Option<RefreshToken>> {
-        Ok(
-            sqlx::query_as("SELECT * FROM oauth2_refresh_tokens WHERE token = ?")
-                .bind(token)
-                .fetch_optional(&**driver)
-                .await?,
-        )
+        sqlx::query_as("SELECT * FROM oauth2_refresh_tokens WHERE token = ?")
+            .bind(token)
+            .fetch_optional(&**driver)
+            .await
     }
 }
 
@@ -536,7 +530,7 @@ impl OAuth2PendingAuthorization {
 
         sqlx::query("UPDATE oauth2_pending_authorizations SET user_id = ? WHERE id = ?")
             .bind(user_id)
-            .bind(&id)
+            .bind(id)
             .execute(&**driver)
             .await?;
 
@@ -560,12 +554,10 @@ impl OAuth2PendingAuthorization {
 impl OAuth2AuthorizationCode {
     #[instrument]
     pub async fn get_by_code(driver: &Database, code: &str) -> Result<Option<Self>> {
-        Ok(
-            sqlx::query_as("SELECT * FROM oauth2_authorization_codes WHERE code = ?")
-                .bind(code)
-                .fetch_optional(&**driver)
-                .await?,
-        )
+        sqlx::query_as("SELECT * FROM oauth2_authorization_codes WHERE code = ?")
+            .bind(code)
+            .fetch_optional(&**driver)
+            .await
     }
 }
 

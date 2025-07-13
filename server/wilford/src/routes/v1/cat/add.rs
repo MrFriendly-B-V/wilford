@@ -22,8 +22,7 @@ pub async fn add(database: WDatabase, auth: Auth, payload: web::Json<Request>) -
     let exists = ConstantAccessToken::list(&database)
         .await?
         .into_iter()
-        .find(|f| f.name.eq(&payload.name))
-        .is_some();
+        .any(|f| f.name.eq(&payload.name));
 
     if exists {
         return Err(WebErrorKind::BadRequest.into());

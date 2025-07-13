@@ -1,0 +1,21 @@
+{
+  "http": {
+    "ui_login_path": "http://localhost:2522/login",
+    "authorization_endpoint": "http://localhost:2521/api/oauth/authorize",
+    "token_endpoint": "http://localhost:2521/api/oauth/token",
+    "jwks_uri_endpoint": "https://localhost:2521/.well-known/jwks.json"
+  },
+  "database": {
+    "user": "wilford",
+    "password": "wilford",
+    "host": "mariadb-wilford",
+    "database": "wilford"
+  },
+  "authorization_provider": "Local",
+  "default_client": {
+    "redirect_uri": "http://localhost:2522/login-ok"
+  },
+  "oidc_signing_key": "/test_oidc_key.pem",
+  "oidc_public_key": "/test_oidc_key.pem.pub",
+  "oidc_issuer": "http://localhost:2521"
+}

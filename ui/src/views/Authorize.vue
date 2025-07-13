@@ -39,50 +39,63 @@
     </v-container>
 </template>
 
-<script setup lang="ts">
+<script lang="ts">
 
-import {ref, onMounted, Ref} from "vue";
 import {server} from "@/main";
-import {useRoute, useRouter} from "vue-router";
+import { defineComponent } from "vue";
 
-const route = useRoute();
-const router = useRouter();
-
-let loading = ref(true);
-let clientName: Ref<string | null> = ref(null);
-let scopes: Ref<string[] | null> = ref([]);
-
-onMounted(async () => {
-    await router.isReady();
-    await loadAuthorizationInfo();
-});
-
-async function allowAuth() {
-    window.location.href = `${server}/api/v1/auth/authorize?authorization=${route.query['authorization']}&grant=true`
+interface Data {
+  loading: boolean,
+  scopes: string[],
+  clientName: string | null,
 }
 
-async function denyAuth() {
-    window.location.href = `${server}/api/v1/auth/authorize?authorization=${route.query['authorization']}&grant=false`
-}
-
-async function loadAuthorizationInfo() {
-    const r = await fetch(`${server}/api/v1/auth/authorization-info?authorization=${route.query['authorization']}`);
-    switch(r.status) {
-        case 200:
-            interface Response {
-                client_name: string,
-                scopes?: string,
-            }
-
-            const json: Response = await r.json();
-            clientName.value = json.client_name;
-            scopes.value = json.scopes?.split(" ") ?? [];
-            loading.value = false;
-
-            break;
-        default:
-            break;
+export default defineComponent({
+  data(): Data {
+    return {
+      loading: false,
+      scopes: [],
+      clientName: null,
     }
-}
+  },
+  async mounted() {
+    await this.$router.isReady();
+    await this.loadAuthorizationInfo();
+  },
+  computed: {
+    authorization(): string {
+      return this.$route.query['authorization']!.toString();
+    }
+  },
+  methods: {
+    authorize(grant: boolean) {
+      window.location.href = `${server}/api/v1/auth/authorize?authorization=${this.authorization}&grant=${grant}`
+    },
+    async allowAuth() {
+      this.authorize(true);
+    },
+    async denyAuth() {
+      this.authorize(false);
+    },
+    async loadAuthorizationInfo() {
+      const r = await fetch(`${server}/api/v1/auth/authorization-info?authorization=${this.authorization}`);
+      switch(r.status) {
+        case 200:
+          interface Response {
+            client_name: string,
+            scopes?: string,
+          }
 
+          const json: Response = await r.json();
+          this.clientName = json.client_name;
+          this.scopes = json.scopes?.split(" ") ?? [];
+          this.loading = false;
+
+          break;
+        default:
+          break;
+      }
+    }
+  }
+});
 </script>

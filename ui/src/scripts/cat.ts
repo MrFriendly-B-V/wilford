@@ -1,5 +1,5 @@
 import {server} from "@/main";
-import {ClientInfo} from "@/components/clients";
+import {ClientInfo} from "@/scripts/clients";
 
 export class CatToken {
     name: string;

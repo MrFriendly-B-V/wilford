@@ -65,7 +65,7 @@ pub async fn authorize(
         }
     };
 
-    // Check redirect URI
+    // Check redirect URI, it should match what the OAuth client has configured
     if client.redirect_uri.ne(&query.redirect_uri) {
         return OAuth2AuthorizationResponse::Err(OAuth2Error::new(
             OAuth2ErrorKind::UnauthorizedClient,
@@ -74,6 +74,8 @@ pub async fn authorize(
         ));
     }
 
+    // Create a pending authorization. This authorization
+    // will later be 'authorized' by a user logging in.
     let pending_authorization = client
         .new_pending_authorization(
             &database,

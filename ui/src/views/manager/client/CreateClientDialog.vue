@@ -37,7 +37,7 @@
 <script setup lang="ts">
 
 import {Ref, ref} from "vue";
-import {ClientInfo} from "@/components/clients";
+import {ClientInfo} from "@/scripts/clients";
 
 defineProps({
     enabled: Boolean,

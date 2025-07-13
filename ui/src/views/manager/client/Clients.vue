@@ -7,13 +7,8 @@
 
         <v-card>
             <v-card-title>
-                <v-btn
-                    icon="mdi-arrow-left"
-                    :flat="true"
-                    :slim="true"
-                    to="/"
-                ></v-btn>
-                OAuth2 Clients
+              <GoBackBtn/>
+              OAuth2 Clients
             </v-card-title>
             <v-card-subtitle>Manage OAuth2 clients</v-card-subtitle>
 
@@ -59,9 +54,10 @@
 <script setup lang="ts">
 
 import {onMounted, ref, Ref} from "vue";
-import {ClientInfo} from "@/components/clients";
-import {Token} from "@/components/token";
+import {ClientInfo} from "@/scripts/clients";
+import {Token} from "@/scripts/token";
 import CreateClientDialog from "@/views/manager/client/CreateClientDialog.vue";
+import GoBackBtn from "@/components/buttons/GoBackBtn.vue";
 
 const headers: { title: string, value: string }[] = [
     {

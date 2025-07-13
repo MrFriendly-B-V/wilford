@@ -49,6 +49,8 @@ pub enum WebErrorKind {
     InvalidInternalState,
     #[error("Forbidden")]
     Forbidden,
+    #[error("Unsupported")]
+    Unsupported,
     #[error("{0}")]
     Database(#[from] database::driver::Error),
     #[error("EspoCRM error: {0}")]
@@ -57,6 +59,10 @@ pub enum WebErrorKind {
     InternalServerError,
     #[error("Failed to parse PKCS8 SPKI: {0}")]
     RsaPkcs8Spki(#[from] rsa::pkcs8::spki::Error),
+    #[error("Failed to send email")]
+    Email(#[from] crate::mail::MailerError),
+    #[error("Your email address is not verified")]
+    EmailNotVerified,
 }
 
 impl ResponseError for WebError {
@@ -66,11 +72,14 @@ impl ResponseError for WebError {
             WebErrorKind::BadRequest => StatusCode::BAD_REQUEST,
             WebErrorKind::Unauthorized => StatusCode::UNAUTHORIZED,
             WebErrorKind::Forbidden => StatusCode::FORBIDDEN,
+            WebErrorKind::Unsupported => StatusCode::NOT_IMPLEMENTED,
             WebErrorKind::InvalidInternalState => StatusCode::INTERNAL_SERVER_ERROR,
             WebErrorKind::Database(_) => StatusCode::INTERNAL_SERVER_ERROR,
             WebErrorKind::Espo(_) => StatusCode::BAD_GATEWAY,
             WebErrorKind::InternalServerError => StatusCode::INTERNAL_SERVER_ERROR,
             WebErrorKind::RsaPkcs8Spki(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            WebErrorKind::Email(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            WebErrorKind::EmailNotVerified => StatusCode::UNAUTHORIZED,
         }
     }
 }

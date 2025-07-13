@@ -2,17 +2,30 @@ use crate::routes::appdata::WConfig;
 use actix_web::web;
 use serde::Serialize;
 
+/// # Further reading
+/// - [OpenID Connect Discovery 1.0, Section 4.1](https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderConfig)
 #[derive(Serialize)]
 pub struct OpenidConfiguration {
+    /// The isser of all JWT tokens
     issuer: String,
+    /// The server's endpoint for authorization
     authorization_endpoint: String,
+    /// The server's endpoint for exchanging a code or refresh token for an access token
     token_endpoint: String,
+    /// The response types we support in the authorization endpoint
     response_types_supported: Vec<String>,
+    /// The grant types we support in the token endpoint
     grant_types_supported: Vec<String>,
+    /// The algorithms we support for signing JWTs
     id_token_signing_alg_values_supported: Vec<String>,
+    /// The endpoint for where the JWKS document can found
     jwks_uri: String,
 }
 
+/// Get the OpenID configuration for this server
+///
+/// # Further reading
+/// - [OpenID Connect Discovery 1.0, Section 4](https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderConfig)
 pub async fn openid_configuration(config: WConfig) -> web::Json<OpenidConfiguration> {
     web::Json(OpenidConfiguration {
         issuer: config.oidc_issuer.clone(),

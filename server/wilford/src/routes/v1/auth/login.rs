@@ -1,14 +1,21 @@
-use crate::espo::user::{EspoUser, LoginStatus};
-use crate::routes::appdata::{WConfig, WDatabase, WEspo};
+use crate::authorization::combined::{
+    CombinedAuthorizationProvider, CombinedAuthorizationProviderError,
+};
+use crate::authorization::espo::EspoAuthorizationProviderError;
+use crate::authorization::local_provider::LocalAuthorizationProviderError;
+use crate::authorization::{AuthorizationError, AuthorizationProvider};
+use crate::routes::appdata::{WConfig, WDatabase};
 use crate::routes::error::{WebErrorKind, WebResult};
 use actix_web::web;
+use database::driver::Database;
 use database::oauth2_client::OAuth2PendingAuthorization;
-use database::user::User;
+use database::user::{SetEmailAddressError, User};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
-use tracing::instrument;
+use tap::TapFallible;
+use tracing::{instrument, warn, warn_span, Instrument};
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 pub struct Request {
     authorization: String,
     username: String,
@@ -26,103 +33,146 @@ pub struct Response {
 pub async fn login(
     database: WDatabase,
     config: WConfig,
-    espo: WEspo,
     payload: web::Json<Request>,
 ) -> WebResult<web::Json<Response>> {
+    // Get the authorization assocated with the provided token
     let authorization = OAuth2PendingAuthorization::get_by_id(&database, &payload.authorization)
-        .await?
+        .instrument(warn_span!("OAuth2PendingAuthorization::get_by_id"))
+        .await
+        .tap_err(|e| warn!("{e}"))?
         .ok_or(WebErrorKind::NotFound)?;
 
-    let login = EspoUser::try_login(
-        &config.espo.host,
-        &payload.username,
-        &payload.password,
-        payload.totp_code.as_deref(),
-    )
-    .await
-    .map_err(|e| WebErrorKind::Espo(e))?;
+    // Get the provider backend
+    let auth_provider = CombinedAuthorizationProvider::new(&config, &database);
 
+    // Check the credentials and handle results
+    let validation_result = match auth_provider
+        .validate_credentials(
+            &payload.username,
+            &payload.password,
+            payload.totp_code.as_deref(),
+        )
+        .instrument(warn_span!("auth_provider::validate_credentials"))
+        .await
+        .tap_err(|e| warn!("{e}"))
+    {
+        Err(AuthorizationError::InvalidCredentials) => {
+            return Ok(web::Json(Response {
+                status: false,
+                totp_required: false,
+            }))
+        }
+        Err(AuthorizationError::TotpNeeded) => {
+            return Ok(web::Json(Response {
+                status: false,
+                totp_required: true,
+            }))
+        }
+        // Should not happen here, but handle anyway.
+        Err(AuthorizationError::UnsupportedOperation) => {
+            return Err(WebErrorKind::InternalServerError.into())
+        }
+        // Should not happen here, but handle anyway.
+        Err(AuthorizationError::AlreadyExists) => {
+            return Err(WebErrorKind::InternalServerError.into())
+        }
+        Err(AuthorizationError::Other(e)) => {
+            warn!("Authorization validation failed: {e}");
+
+            // Could we do this better? Ugly.
+            return Err(match e {
+                CombinedAuthorizationProviderError::EspoCrm(e) => match e {
+                    EspoAuthorizationProviderError::Database(e) => e.into(),
+                    EspoAuthorizationProviderError::Espocrm(e) => WebErrorKind::Espo(e).into(),
+                },
+                CombinedAuthorizationProviderError::Local(e) => match e {
+                    LocalAuthorizationProviderError::Database(e) => e.into(),
+                    LocalAuthorizationProviderError::Hashing(_) => {
+                        WebErrorKind::InternalServerError.into()
+                    }
+                    LocalAuthorizationProviderError::SetEmailError(e) => match e {
+                        SetEmailAddressError::NoEmail => WebErrorKind::BadRequest.into(),
+                        SetEmailAddressError::Sqlx(e) => e.into(),
+                    },
+                },
+            });
+        }
+        Ok(user_information) => user_information,
+    };
+
+    // Get the user in the database
+    let user = User::get_by_id(&database, &validation_result.user_information.id)
+        .await?
+        .ok_or(WebErrorKind::InternalServerError)?;
+
+    // Check if any scopes were requested that the user should not be allowed to access
+    // This check is skipped for admins.
+    // For optimizations, we evaluate the is_admin check first, followed by the scope check. Due to
+    // short-circuiting behaviour, the scope check is only evaluated if the user is _not_ an admin.
+    // We use the lambda function to reduce the complecity of the if statement.
+    let scope_check = || {
+        are_scopes_allowed(&database, &authorization, &user).instrument(warn_span!("scope_check"))
+    };
+
+    if !validation_result.user_information.is_admin && !scope_check().await? {
+        return Err(WebErrorKind::Forbidden.into());
+    }
+
+    // Check if the email address is verified
+    if !user.is_email_verified(&database).await? {
+        return Err(WebErrorKind::EmailNotVerified.into());
+    }
+
+    // Mark the authorization as authorized.
+    authorization
+        .set_user_id(&database, &validation_result.user_information.id)
+        .instrument(warn_span!("authorization::set_user_id"))
+        .await
+        .tap_err(|e| warn!("{e}"))
+        .map_err(|_| WebErrorKind::BadRequest)?;
+
+    Ok(web::Json(Response {
+        status: true,
+        totp_required: false,
+    }))
+}
+
+#[instrument(skip_all)]
+async fn are_scopes_allowed(
+    database: &Database,
+    authorization: &OAuth2PendingAuthorization,
+    user: &User,
+) -> WebResult<bool> {
+    // Check which scopes are granted to the user
+    let permitted_scopes = HashSet::from_iter(user.list_permitted_scopes(database).await?);
+
+    // The set of allowed scopes are the scopes granted to the user by an admin
+    // and the oidc scopes, which are always allowed
+    let oidc_scopes = oidc_scopes();
+    let allowed_scopes = permitted_scopes
+        .union(&oidc_scopes)
+        .map(|c| c.to_string())
+        .collect::<HashSet<_>>();
+
+    // Parse the requested scopes to a set.
     // OAuth2 defines `scope` to be all scopes, seperated by a ' ' (space char)
     // Where duplicates can be ignored.
-    let scope_set = authorization
+    let requested_scopes = authorization
         .scopes()
         .clone()
         .map(|s| s.split(" ").map(|c| c.to_string()).collect::<HashSet<_>>())
         .unwrap_or_default();
 
-    match login {
-        LoginStatus::Ok(id) => {
-            // Create a user if it doesn't exist
-            // If it does, check if all scopes are allowed.
-            // Only exceptions to this are Espo admins, they may have all scopes,
-            // and the OIDC scopes
-            match User::get_by_id(&database, &id).await? {
-                Some(user) if user.is_admin => {}
-                Some(user) => {
-                    let permitted_scopes =
-                        HashSet::from_iter(user.list_permitted_scopes(&database).await?);
+    // The difference between the requested and allowed is the set of
+    // scopes requested, but which are not allowed for the user.
+    let disallowed_scopes = requested_scopes
+        .difference(&allowed_scopes)
+        .collect::<HashSet<_>>();
 
-                    let oidc_scopes = oidc_scopes();
-                    let allowed_scopes = permitted_scopes
-                        .union(&oidc_scopes)
-                        .map(|c| c.to_string())
-                        .collect::<HashSet<_>>();
-
-                    let disallowed_scopes = scope_set
-                        .difference(&allowed_scopes)
-                        .collect::<HashSet<_>>();
-
-                    if !disallowed_scopes.is_empty() {
-                        return Err(WebErrorKind::Forbidden.into());
-                    }
-                }
-                None => {
-                    let espo_user = EspoUser::get_by_id(&espo, &id)
-                        .await
-                        .map_err(|e| WebErrorKind::Espo(e))?;
-
-                    let user = User::new(
-                        &database,
-                        id.clone(),
-                        espo_user.name,
-                        espo_user.email_address,
-                        espo_user.user_type.eq("admin"),
-                    )
-                    .await?;
-
-                    // No permitted scopes are granted yet
-                    if !user.is_admin {
-                        // Remove the OIDC scopes
-                        let oidc_scopes = oidc_scopes();
-                        let disallowed_scopes =
-                            scope_set.difference(&oidc_scopes).collect::<HashSet<_>>();
-
-                        if !disallowed_scopes.is_empty() {
-                            return Err(WebErrorKind::Forbidden.into());
-                        }
-                    }
-                }
-            }
-
-            authorization
-                .set_user_id(&database, &id)
-                .await
-                .map_err(|_| WebErrorKind::BadRequest)?;
-
-            Ok(web::Json(Response {
-                status: true,
-                totp_required: false,
-            }))
-        }
-        LoginStatus::SecondStepRequired => Ok(web::Json(Response {
-            status: false,
-            totp_required: true,
-        })),
-        LoginStatus::Err => Ok(web::Json(Response {
-            status: false,
-            totp_required: false,
-        })),
-    }
+    // Thus, if the set of dissalowed scopes is empty,
+    // the user only requested scopes which they can access,
+    // and thus the scope check succeeded.
+    Ok(disallowed_scopes.is_empty())
 }
 
 fn oidc_scopes() -> HashSet<String> {

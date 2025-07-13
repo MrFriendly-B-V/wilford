@@ -14,6 +14,13 @@ pub struct Request {
     client_id: String,
 }
 
+/// Remove an OAuth2 client
+///
+/// # Errors
+///
+/// - If the user has insufficient permissions
+/// - If the client to be removed is the internal client
+/// - If the operation fails
 pub async fn remove(
     database: WDatabase,
     auth: Auth,
@@ -26,6 +33,11 @@ pub async fn remove(
     let client = OAuth2Client::get_by_client_id(&database, &payload.client_id)
         .await?
         .ok_or(WebErrorKind::NotFound)?;
+
+    if client.is_internal {
+        return Err(WebErrorKind::BadRequest)?;
+    }
+
     client.delete(&database).await?;
 
     Ok(Empty)

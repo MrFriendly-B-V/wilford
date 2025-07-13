@@ -28,7 +28,7 @@
 
 <script setup lang="ts">
 import {Ref, ref} from "vue";
-import {CatToken} from "@/components/cat";
+import {CatToken} from "@/scripts/cat";
 
 const _ = defineProps({
     enabled: Boolean,

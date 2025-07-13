@@ -11,7 +11,7 @@ use database::oauth2_client::{
 };
 use database::user::User;
 
-use crate::response_types::Redirect;
+use crate::response_types::{MaybeCookie, Redirect, SetCookie};
 use crate::routes::appdata::{WConfig, WDatabase};
 use crate::routes::error::{WebErrorKind, WebResult};
 use crate::routes::oauth::{OAuth2AuthorizationResponse, OAuth2Error, OAuth2ErrorKind};
@@ -29,26 +29,28 @@ pub async fn authorize(
     oidc_signing_key: WOidcSigningKey,
     config: WConfig,
     query: web::Query<Query>,
-) -> WebResult<OAuth2AuthorizationResponse<Redirect>> {
+) -> WebResult<MaybeCookie<'static, OAuth2AuthorizationResponse<Redirect>>> {
     let pending_authorization =
         OAuth2PendingAuthorization::get_by_id(&database, &query.authorization)
             .await?
             .ok_or(WebErrorKind::NotFound)?;
 
-    let client = OAuth2Client::get_by_client_id(&database, &pending_authorization.client_id())
+    let client = OAuth2Client::get_by_client_id(&database, pending_authorization.client_id())
         .await?
         .ok_or(WebErrorKind::NotFound)?;
 
     if !query.grant {
-        return Ok(OAuth2AuthorizationResponse::Err(OAuth2Error::new(
-            OAuth2ErrorKind::AccessDenied,
-            &client.redirect_uri,
-            pending_authorization.state().as_deref(),
+        return Ok(MaybeCookie::none(OAuth2AuthorizationResponse::Err(
+            OAuth2Error::new(
+                OAuth2ErrorKind::AccessDenied,
+                &client.redirect_uri,
+                pending_authorization.state().as_deref(),
+            ),
         )));
     }
 
     let state = pending_authorization.state().clone();
-    let redirect_uri = match pending_authorization.ty() {
+    let res = match pending_authorization.ty() {
         AuthorizationType::AuthorizationCode => {
             let authorization = client
                 .new_authorization_code(&database, pending_authorization)
@@ -67,7 +69,7 @@ pub async fn authorize(
                 state: Option<String>,
             }
 
-            format!(
+            let url = format!(
                 "{}?{}",
                 client.redirect_uri,
                 serde_qs::to_string(&RedirectQuery {
@@ -75,22 +77,30 @@ pub async fn authorize(
                     state,
                 })
                 .expect("Serializing query string"),
-            )
+            );
+
+            MaybeCookie::none(OAuth2AuthorizationResponse::Ok(Redirect::new(url)))
         }
         AuthorizationType::Implicit => {
             let access_token = new_access_token(&client, pending_authorization, &database).await?;
 
-            format!(
+            let url = format!(
                 "{}#{}",
                 client.redirect_uri,
-                create_implicit_fragment(None, access_token, state),
-            )
+                create_implicit_fragment(None, access_token.clone(), state),
+            );
+
+            MaybeCookie::some(SetCookie::new(
+                "Authorization",
+                format!("Bearer {}", access_token.token),
+                OAuth2AuthorizationResponse::Ok(Redirect::new(url)),
+            ))
         }
         AuthorizationType::IdToken => {
             let nonce = pending_authorization.nonce().clone();
             let access_token = new_access_token(&client, pending_authorization, &database).await?;
 
-            format!(
+            let url = format!(
                 "{}#{}",
                 client.redirect_uri,
                 create_implicit_fragment(
@@ -109,14 +119,20 @@ pub async fn authorize(
                         .tap_err(|e| warn!("Failed to create ID token: {e}"))
                         .map_err(|_| WebErrorKind::InternalServerError)?
                     ),
-                    access_token,
+                    access_token.clone(),
                     state
                 )
-            )
+            );
+
+            MaybeCookie::some(SetCookie::new(
+                "Authorization",
+                format!("Bearer {}", access_token.token),
+                OAuth2AuthorizationResponse::Ok(Redirect::new(url)),
+            ))
         }
     };
 
-    Ok(OAuth2AuthorizationResponse::Ok(Redirect::new(redirect_uri)))
+    Ok(res)
 }
 
 /// Create a new OAuth2 access token.
@@ -127,7 +143,7 @@ async fn new_access_token(
     database: &Database,
 ) -> WebResult<AccessToken> {
     Ok(client
-        .new_access_token(&database, pending_authorization)
+        .new_access_token(database, pending_authorization)
         .await
         .map_err(|e| match e {
             OAuth2AuthorizationCodeCreationError::Sqlx(e) => WebErrorKind::Database(e),

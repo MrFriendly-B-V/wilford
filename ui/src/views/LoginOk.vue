@@ -33,7 +33,7 @@
 
 import {onMounted, Ref, ref} from "vue";
 import {useRoute, useRouter} from "vue-router";
-import {ClientInfo} from "@/components/clients";
+import {ClientInfo} from "@/scripts/clients";
 
 const router = useRouter();
 const route = useRoute();
@@ -56,7 +56,7 @@ function setAccessToken() {
     }
 
     loading.value = false;
-    router.push('/');
+    router.push('/me');
 }
 
 function parseQuery(queryString: string): Map<string, string> {

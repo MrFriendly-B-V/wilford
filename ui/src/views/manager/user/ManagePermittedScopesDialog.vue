@@ -57,7 +57,7 @@
 
 <script setup lang="ts">
 
-import {User} from "@/components/user";
+import {User} from "@/scripts/user";
 import {onMounted, ref, Ref, watch} from "vue";
 import AddPermittedScopeDialog from "@/views/manager/user/AddPermittedScopeDialog.vue";
 

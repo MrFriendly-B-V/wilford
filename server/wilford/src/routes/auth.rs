@@ -1,20 +1,21 @@
-use crate::espo::user::EspoUser;
-use crate::routes::appdata::{WDatabase, WEspo};
+use crate::routes::appdata::WDatabase;
 use crate::routes::error::{WebError, WebErrorKind, WebResult};
 use actix_web::cookie::time::OffsetDateTime;
 use actix_web::dev::Payload;
 use actix_web::{FromRequest, HttpRequest};
 use database::constant_access_tokens::ConstantAccessToken;
 use database::oauth2_client::AccessToken;
+use database::user::User;
 use std::collections::HashSet;
 use std::future::Future;
 use std::pin::Pin;
 
 #[derive(Debug, Clone)]
 pub struct Auth {
-    pub espo_user_id: String,
+    pub user_id: String,
     pub name: String,
     pub is_admin: bool,
+    pub user: User,
     token: AccessToken,
 }
 
@@ -27,10 +28,6 @@ impl FromRequest for Auth {
         let database = req
             .app_data::<WDatabase>()
             .expect("Getting AppData for type WDatabase")
-            .clone();
-        let espo_client = req
-            .app_data::<WEspo>()
-            .expect("Getting AppData for type WEspo")
             .clone();
 
         Box::pin(async move {
@@ -47,14 +44,15 @@ impl FromRequest for Auth {
                 None => return Err(WebErrorKind::Unauthorized.into()),
             };
 
-            let espo_user = EspoUser::get_by_id(&espo_client, &token_info.user_id)
-                .await
-                .map_err(|e| WebErrorKind::Espo(e))?;
+            let user = User::get_by_id(&database, &token_info.user_id)
+                .await?
+                .ok_or(WebError::from(WebErrorKind::InternalServerError))?;
 
             Ok(Self {
-                espo_user_id: espo_user.id,
-                name: espo_user.name,
-                is_admin: espo_user.user_type.eq("admin"),
+                user_id: user.user_id.clone(),
+                name: user.name.clone(),
+                is_admin: user.is_admin,
+                user,
                 token: token_info,
             })
         })
@@ -62,11 +60,13 @@ impl FromRequest for Auth {
 }
 
 impl Auth {
+    /// Check if the provided scope is present.
     #[must_use]
     pub fn has_scope(&self, scope: &str) -> bool {
         self.token.scopes().contains(scope)
     }
 
+    /// Get the set of scopes the authorization is authorized for.
     pub fn scopes(&self) -> HashSet<String> {
         self.token.scopes()
     }
@@ -75,7 +75,11 @@ impl Auth {
 /// Authentication using a constant token.
 /// These tokens are created manually.
 pub struct ConstantAccessTokenAuth {
+    /// The name of the client
+    #[allow(unused)]
     pub name: String,
+    /// The secret token
+    #[allow(unused)]
     pub token: String,
 }
 
@@ -104,6 +108,13 @@ impl FromRequest for ConstantAccessTokenAuth {
     }
 }
 
+/// Get an authorization token from, in order:
+/// - The `Authorization` header.
+/// - The `Authorization` cookie.
+///
+/// # Errors
+/// - If the token is not provided.
+/// - If the token is invalid, e.g. it does not start with `Bearer `.
 fn get_authorization_token(req: &HttpRequest) -> WebResult<String> {
     let header = req
         .headers()

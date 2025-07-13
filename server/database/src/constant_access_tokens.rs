@@ -30,19 +30,17 @@ impl ConstantAccessToken {
 
     #[instrument]
     pub async fn list(driver: &Database) -> Result<Vec<Self>> {
-        Ok(sqlx::query_as("SELECT * FROM constant_access_tokens")
+        sqlx::query_as("SELECT * FROM constant_access_tokens")
             .fetch_all(&**driver)
-            .await?)
+            .await
     }
 
     #[instrument]
     pub async fn get_by_token(driver: &Database, token: &str) -> Result<Option<Self>> {
-        Ok(
-            sqlx::query_as("SELECT * FROM constant_access_tokens WHERE token = ?")
-                .bind(token)
-                .fetch_optional(&**driver)
-                .await?,
-        )
+        sqlx::query_as("SELECT * FROM constant_access_tokens WHERE token = ?")
+            .bind(token)
+            .fetch_optional(&**driver)
+            .await
     }
 
     #[instrument]
